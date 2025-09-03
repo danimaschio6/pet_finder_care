@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View } from 'react-native';
 import LoginScreen from './screens/LoginScreen';
-import RegisterScreen from './screens/RegisterScreen';
+
 
 const App = () => {
   const [currentView, setCurrentView] = useState('login'); // El estado por defecto es 'login'
