@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import colors from './colors.json';
+import colors from '../data/colors.json';
 
-const LoginScreen = ({ onLogin }) => {
-  const [isLoginView, setIsLoginView] = useState(true);
+const LoginScreen = ({ onLoginSuccess, onRegisterPress }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
 
   const handleLogin = () => {
@@ -14,30 +12,12 @@ const LoginScreen = ({ onLogin }) => {
       setMessage("Por favor, completa todos los campos.");
       return;
     }
-    // Lógica de validación simulada
     if (email === "test@example.com" && password === "password123") {
       setMessage("¡Has iniciado sesión!");
-      onLogin(true); // Actualiza el estado de la app principal
+      onLoginSuccess();
     } else {
       setMessage("Credenciales incorrectas.");
     }
-  };
-
-  const handleRegister = () => {
-    if (!email || !password || !confirmPassword) {
-      setMessage("Por favor, completa todos los campos.");
-      return;
-    }
-    if (password !== confirmPassword) {
-      setMessage("Las contraseñas no coinciden.");
-      return;
-    }
-    // Lógica de registro simulada
-    setMessage("¡Cuenta creada! Ahora puedes iniciar sesión.");
-    setIsLoginView(true);
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
   };
 
   return (
@@ -48,7 +28,7 @@ const LoginScreen = ({ onLogin }) => {
         <Text style={styles.subtitle}>¡Uniendo mascotas y familias!</Text>
       </View>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{isLoginView ? 'Iniciar Sesión' : 'Registrarse'}</Text>
+        <Text style={styles.cardTitle}>Iniciar Sesión</Text>
         {message ? <Text style={styles.messageText}>{message}</Text> : null}
         <TextInput
           style={styles.input}
@@ -65,27 +45,18 @@ const LoginScreen = ({ onLogin }) => {
           onChangeText={setPassword}
           secureTextEntry
         />
-        {!isLoginView && (
-          <TextInput
-            style={styles.input}
-            placeholder="Confirmar Contraseña"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-          />
-        )}
         <TouchableOpacity
           style={styles.button}
-          onPress={isLoginView ? handleLogin : handleRegister}
+          onPress={handleLogin}
         >
-          <Text style={styles.buttonText}>{isLoginView ? 'Ingresar' : 'Crear Cuenta'}</Text>
+          <Text style={styles.buttonText}>Ingresar</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => setIsLoginView(!isLoginView)}
+          onPress={onRegisterPress}
         >
           <Text style={styles.secondaryButtonText}>
-            {isLoginView ? '¿No tienes una cuenta? Regístrate' : '¿Ya tienes una cuenta? Inicia sesión'}
+            ¿No tienes una cuenta? Regístrate
           </Text>
         </TouchableOpacity>
       </View>
