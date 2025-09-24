@@ -1,36 +1,55 @@
+// App.js
+
 import React, { useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { StyleSheet } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Alert } from 'react-native';
 
-import LoginScreen from './screens/LoginScreens';
-import DashboardScreen from './screens/DashboardScreen';
+// Importa todas tus pantallas
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
+import TabNavigator from './screens/TabNavigator';
+import misMascotasScreen from './screens/misMascotasScreen';
+import Chat from './screens/Chat';
+
+const Stack = createNativeStackNavigator();
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedin, setIsLoggedin] = useState(false);
 
   const handleLoginSuccess = () => {
-    setIsLoggedIn(true);
+    setIsLoggedin(true);
   };
 
   const handleLogout = () => {
-    setIsLoggedIn(false);
+    setIsLoggedin(false);
   };
 
+  
+
   return (
-    isLoggedIn ? (
-      <NavigationContainer>
-        <DashboardScreen onLogout={handleLogout} />
-      </NavigationContainer>
-    ) : (
-      <LoginScreen onLogin={handleLoginSuccess} />
-    )
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isLoggedin ? (
+          <>
+            <Stack.Screen name="Dashboard">
+              {props => <TabNavigator {...props} onLogout={handleLogout} />}
+            </Stack.Screen>
+            
+            <Stack.Screen name="misMascotas" component={misMascotasScreen} />
+            <Stack.Screen name="Mensajes" component={Chat} />
+          </>
+        ) : (
+          <>
+            <Stack.Screen name="Login">
+              {props => <LoginScreen {...props} onLogin={handleLoginSuccess} />}
+            </Stack.Screen>
+            <Stack.Screen name="Register" component={RegisterScreen} />
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;

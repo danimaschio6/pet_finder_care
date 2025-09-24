@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import colors from './colors.json';
+import colors from '../data/colors.json';
 
 const LoginScreen = ({ onLogin }) => {
   const [isLoginView, setIsLoginView] = useState(true);
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fondo.componentes,
     padding: 24,
     borderRadius: 16,
-    shadowColor: colors.varios.sombra,
+    shadowColor: colors.varios,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 10,

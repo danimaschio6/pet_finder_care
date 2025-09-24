@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Dimensions, Alert, BackHandler } from 'react-native';
 import { AntDesign, Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native'; // Importa este hook para navegar
 import colors from '../data/colors.json';
 
 const { width } = Dimensions.get('window');
@@ -13,7 +14,6 @@ const PetCard = ({ pet }) => (
     <View style={styles.petImagePlaceholder}>
       <Text>Foto</Text>
     </View>
-
     {/* Información de la Mascota */}
     <View style={styles.petInfo}>
       <Text style={styles.petName}>
@@ -33,104 +33,18 @@ const PetCard = ({ pet }) => (
 );
 
 const DashboardScreen = ({ onLogout }) => {
-  const [activeTab, setActiveTab] = useState('home');
+  const navigation = useNavigation();
 
-  // Función para manejar el clic en los botones de acceso rápido
-  const handleQuickAccessPress = () => {
-    Alert.alert(
-      "¡Ups! 😅",
-      "Esta función aún no está disponible."
-    );
+const handleComingSoon = () => {
+  Alert.alert('Función en Desarrollo', 'Esta función se implementará pronto. ¡Gracias por tu paciencia!');
   };
 
-  // Hook para manejar el botón de retroceso del dispositivo
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        // Si el usuario está en la pestaña de inicio, muestra la alerta
-        if (activeTab === 'home') {
-          Alert.alert(
-            "Cerrar sesión",
-            "¿Estás seguro que quieres cerrar sesión?",
-            [
-              {
-                text: "No",
-                onPress: () => null,
-                style: "cancel"
-              },
-              { text: "Sí", onPress: () => onLogout() }
-            ],
-            { cancelable: false }
-          );
-          return true; // Retorna 'true' para indicar que hemos manejado el evento
-        }
-        return false; // Retorna 'false' para que el comportamiento por defecto (retroceder) ocurra
-      };
 
-      const BackHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      return () =>
-        BackHandler.remove();
-    }, [activeTab, onLogout])
-  );
 
   const petsNearYou = [
     { id: 1, name: 'Max', status: '(Perdido)', breed: 'Golden Retriever', gender: 'macho', time: 'Hace 2 horas', distance: '1.2 km', image: 'https://placehold.co/100x100/AEC6CF/white?text=Max' },
     { id: 2, name: 'Bella', status: '(Encontrada)', breed: 'Mestiza', gender: 'hembra', time: 'Ayer', distance: '3.5 km', image: 'https://placehold.co/100x100/FFD700/black?text=Bella' },
   ];
-
-  const renderHome = () => (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.welcomeText}>¡Bienvenido, [Nombre de Usuario]!</Text>
-      <Text style={styles.sectionTitle}>Mascotas Cerca de Ti</Text>
-      <View style={styles.petCardsContainer}>
-        {petsNearYou.map(pet => (
-          <PetCard key={pet.id} pet={pet} />
-        ))}
-      </View>
-      <Text style={styles.sectionTitle}>Accesos Rápidos</Text>
-      <View style={styles.quickAccessGrid}>
-        <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#E8F1FF' }]} onPress={handleQuickAccessPress}>
-          <AntDesign name="pluscircle" size={24} color="#4A90E2" />
-          <Text style={styles.quickAccessText}>Reportar Mascota</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#E6FFF2' }]} onPress={handleQuickAccessPress}>
-          <MaterialCommunityIcons name="dog-side" size={24} color="#50E3C2" />
-          <Text style={styles.quickAccessText}>Mis Mascotas</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#F6E6FF' }]} onPress={handleQuickAccessPress}>
-          <MaterialCommunityIcons name="map-marker-radius" size={24} color="#BD10E0" />
-          <Text style={styles.quickAccessText}>Refugios Cercanos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#FFFEE6' }]} onPress={handleQuickAccessPress}>
-          <Ionicons name="chatbubble-ellipses-outline" size={24} color="#F8E71C" />
-          <Text style={styles.quickAccessText}>Mensajes</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
-  );
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'home':
-        return renderHome();
-      case 'search':
-        return <View style={styles.contentContainer}><Text style={styles.heading}>Buscar Mascota</Text></View>;
-      case 'report':
-        return <View style={styles.contentContainer}><Text style={styles.heading}>Reportar</Text></View>;
-      case 'profile':
-        return (
-          <View style={styles.contentContainer}>
-            <Text style={styles.heading}>Mi Perfil</Text>
-            <TouchableOpacity onPress={onLogout} style={styles.logoutButton}>
-              <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      default:
-        return renderHome();
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -148,33 +62,40 @@ const DashboardScreen = ({ onLogout }) => {
         </View>
       </View>
 
-      {/* Contenido Dinámico de la Pantalla */}
-      <View style={styles.content}>
-        {renderContent()}
-      </View>
-
-      {/* Barra de Navegación Inferior */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => setActiveTab('home')} style={styles.navButton}>
-          <Ionicons name={activeTab === 'home' ? 'home' : 'home-outline'} size={24} color={activeTab === 'home' ? colors.primarios.indigo : colors.secundarios.gris} />
-          <Text style={[styles.navText, activeTab === 'home' && { color: colors.primarios.indigo }]}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('search')} style={styles.navButton}>
-          <AntDesign name="search1" size={24} color={activeTab === 'search' ? colors.primarios.indigo : colors.secundarios.gris} />
-          <Text style={[styles.navText, activeTab === 'search' && { color: colors.primarios.indigo }]}>Buscar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('report')} style={styles.navButton}>
-          <Ionicons name={'receipt-outline'} size={24} color={activeTab === 'report' ? colors.primarios.indigo : colors.secundarios.gris} />
-          <Text style={[styles.navText, activeTab === 'report' && { color: colors.primarios.indigo }]}>Reportar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setActiveTab('profile')} style={styles.navButton}>
-          <FontAwesome5 name="user-alt" size={24} color={activeTab === 'profile' ? colors.primarios.indigo : colors.secundarios.gris} />
-          <Text style={[styles.navText, activeTab === 'profile' && { color: colors.primarios.indigo }]}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Contenido de la Pantalla */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.welcomeText}>¡Bienvenido, [Nombre de Usuario]!</Text>
+        <Text style={styles.sectionTitle}>Mascotas Cerca de Ti</Text>
+        <View style={styles.petCardsContainer}>
+          {petsNearYou.map(pet => (
+            <PetCard key={pet.id} pet={pet} />
+          ))}
+        </View>
+        <Text style={styles.sectionTitle}>Accesos Rápidos</Text>
+        <View style={styles.quickAccessGrid}>
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#E8F1FF' }]} onPress={() => navigation.navigate('Reportar')}>
+            <AntDesign name="pluscircle" size={24} color="#4A90E2" />
+            <Text style={styles.quickAccessText}>Reportar Mascota</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#E6FFF2' }]} onPress={() => navigation.navigate('misMascotas')}>
+            <MaterialCommunityIcons name="dog-side" size={24} color="#50E3C2" />
+            <Text style={styles.quickAccessText}>Mis Mascotas</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#F6E6FF' }]} onPress={() => handleComingSoon()}>
+            <MaterialCommunityIcons name="map-marker-radius" size={24} color="#BD10E0" />
+            <Text style={styles.quickAccessText}>Refugios Cercanos</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#FFFEE6' }]} onPress={() => navigation.navigate('Mensajes')}>
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#F8E71C" />
+            <Text style={styles.quickAccessText}>Mensajes</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </View>
   );
 };
+
+
 
 const styles = StyleSheet.create({
   container: {
@@ -190,7 +111,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     borderBottomLeftRadius: 25,
     borderBottomRightRadius: 25,
-    shadowColor: colors.varios.sombra,
+    shadowColor: colors.varios,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -218,7 +139,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 15,
     marginBottom: 25,
-    shadowColor: colors.varios.sombra,
+    shadowColor: colors.varios,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
@@ -258,7 +179,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     marginBottom: 15,
-    shadowColor: colors.varios.sombra,
+    shadowColor: colors.varios,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
@@ -312,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
     padding: 10,
-    shadowColor: colors.varios.sombra,
+    shadowColor: colors.varios,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
@@ -337,7 +258,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    shadowColor: colors.varios.sombra,
+    shadowColor: colors.varios,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,

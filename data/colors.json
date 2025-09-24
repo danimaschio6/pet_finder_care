@@ -32,5 +32,8 @@
   },
   "bordes": {
     "primario": "#d1d5db"
+  },
+  "varios": {
+    "sombra": "#000000"
   }
 }
