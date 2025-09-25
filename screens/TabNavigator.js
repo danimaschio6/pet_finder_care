@@ -7,9 +7,25 @@ import colors from '../data/colors.json';
 import ReportPetScreen from './ReportPetScreen';
 import DashboardScreen from './DashboardScreen';
 import ProfileScreen from './ProfileScreen';
-import PetDetailSecreen from './PetDetailScreen';
+
+//import PetDetailSecreen from './PetDetailScreen';
+
+import NearbyPetsScreen from './NearbyPetsScreen';
+import NearbyPetDetailScreen from './NearbyPetDetailScreen';
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 const Tab = createBottomTabNavigator();
+
+
+const Stack = createNativeStackNavigator();
+function NearbyPetsStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="NearbyPets" component={NearbyPetsScreen} />
+      <Stack.Screen name="NearbyPetDetailScreen" component={NearbyPetDetailScreen} />
+    </Stack.Navigator>
+  );
+}
 
 const TabNavigator = ({ onLogout }) => {
   return (
@@ -51,7 +67,10 @@ const TabNavigator = ({ onLogout }) => {
       })}
     >
       <Tab.Screen name="Inicio" component={DashboardScreen} />
+      {/** 
       <Tab.Screen name="Buscar" component={PetDetailSecreen} />
+      */}
+      <Tab.Screen name="Buscar" component={NearbyPetsStack} />
       <Tab.Screen name="Reportar" component={ReportPetScreen} />
       <Tab.Screen name="Perfil">
         {props => <ProfileScreen {...props} onLogout={onLogout} />}
