@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import colors from "../data/colors.json";
 import PetCard from "./components//PetCardComponent";
 
@@ -120,13 +121,9 @@ export default function NearbyPetsScreen() {
     <View style={styles.screen}>
       <View style={styles.header}>
           <Text style={styles.headerTitle}>Mascotas Cerca</Text>
-        </View>
+      </View>
+
       <View style={styles.container}>
-        {/* Encabezado */}
-        {/**
-        <Text style={styles.header}>Mascotas Cerca</Text>
-        */}
-        
 
         {/* Filtros */}
         {/* 
@@ -158,23 +155,23 @@ export default function NearbyPetsScreen() {
         
         <View style={styles.filtros}>
           <TouchableOpacity style={ [styles.botonFiltro, filtroPerdidas === "Todas" && styles.botonFiltroActivo] } onPress={() => setFiltroPerdidas("Todas")}> 
-            <Text style={ styles.filtroText}>
+            <Text style={ [styles.filtroText, filtroPerdidas === "Todas" && styles.filtroActivoText] }>
               Todas
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={ [styles.botonFiltro, filtroPerdidas === "Perdidas" && styles.botonFiltroActivo] } onPress={() => setFiltroPerdidas("Perdidas")}> 
-            <Text style={ styles.filtroText}>
+            <Text style={ [styles.filtroText, filtroPerdidas === "Perdidas" && styles.filtroActivoText] }>
               Perdidas
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={ [styles.botonFiltro, filtroPerdidas === "Encontradas" && styles.botonFiltroActivo] } onPress={() => setFiltroPerdidas("Encontradas")}>
-            <Text style={ styles.filtroText}>
+            <Text style={ [styles.filtroText, filtroPerdidas === "Encontradas" && styles.filtroActivoText] }>
               Encontradas
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={ styles.botonFiltro } onPress={() => setModalFiltrosVisible(true)}>
-            <Text style={ styles.filtroText}>
-              Filtros
+            <Text style={ styles.filtroText }>
+              <Ionicons name="options-outline" size={22} color= {colors.botones.textoSecundario}/>
             </Text>
           </TouchableOpacity>
 
@@ -300,14 +297,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   botonFiltro: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRadius: 10,
     backgroundColor: colors.botones.secundario,
   },
   botonFiltroActivo: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRadius: 10,
     color: "#ffffffff",
     backgroundColor: colors.botones.primario,
@@ -316,13 +313,18 @@ const styles = StyleSheet.create({
     color: colors.botones.textoSecundario,
     fontWeight: '500',
   },
+  filtroActivoText: {
+    color: colors.botones.textoPrimario,
+    fontWeight: '500',
+  },
   input: {
     backgroundColor: colors.fondo.componentes,
     padding: 15,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.bordes.primario,
-    margin: 10,
+    marginHorizontal: 12,
+    marginVertical: 4,
   },
   card: {
     flexDirection: 'row',
