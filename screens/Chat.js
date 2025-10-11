@@ -12,7 +12,11 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function Chat() {
+<<<<<<< HEAD
   const insets = useSafeAreaInsets(); // márgenes seguros (notch, barra de navegación, etc.)
+=======
+  const insets = useSafeAreaInsets();
+>>>>>>> origin/master
   const [messages, setMessages] = useState([
     { id: "1", text: "¡Bienvenido a Pet Finder 🐾!", from: "system" },
   ]);
@@ -34,7 +38,11 @@ export default function Chat() {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+<<<<<<< HEAD
         keyboardVerticalOffset={70}
+=======
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 70 : 80}
+>>>>>>> origin/master
       >
         <FlatList
           data={messages}
@@ -49,13 +57,22 @@ export default function Chat() {
               <Text>{item.text}</Text>
             </View>
           )}
+<<<<<<< HEAD
           contentContainerStyle={{ paddingTop: 40 }}
+=======
+          // 💡 Added paddingBottom to prevent the last message from being hidden
+          contentContainerStyle={{ paddingTop: 40, paddingBottom: 100 }} 
+>>>>>>> origin/master
         />
 
         <View
           style={[
             styles.inputContainer,
+<<<<<<< HEAD
             { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 }, // evita que tape los botones
+=======
+            { paddingBottom: insets.bottom > 0 ? insets.bottom : 12 },
+>>>>>>> origin/master
           ]}
         >
           <TextInput
@@ -117,4 +134,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
   },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> origin/master
