@@ -5,7 +5,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './supabase/client/supabaseClient';
 
-// Importa todas tus pantallas
+// Importa todas las pantallas
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import CompleteProfileScreen from './screens/CompleteProfileScreen';
