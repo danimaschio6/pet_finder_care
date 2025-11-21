@@ -1,29 +1,65 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import colors from '../data/colors.json';
+import { supabase } from '../supabase/client/supabaseClient';
 
-const LoginScreen = ({ onLogin }) => {
+const LoginScreen = ({ onLogin, navigation }) => {
   const [isLoginView, setIsLoginView] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email || !password) {
       setMessage("Por favor, completa todos los campos.");
       return;
     }
-    // Lógica de validación simulada
-    if (email === "test@example.com" && password === "password123") {
-      setMessage("¡Has iniciado sesión!");
-      onLogin(true); // Actualiza el estado de la app principal
-    } else {
-      setMessage("Credenciales incorrectas.");
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password,
+      });
+
+      if (error) {
+        setMessage(error.message || "Credenciales incorrectas.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Verificar si el usuario tiene perfil completo
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, phone, city')
+          .eq('id', data.user.id)
+          .single();
+
+        setIsLoading(false);
+        
+        // Si no tiene perfil o le faltan datos, ir a completar perfil
+        if (profileError || !profile || !profile.first_name || !profile.last_name || !profile.phone || !profile.city) {
+          navigation?.navigate('CompleteProfile', { 
+            userId: data.user.id, 
+            email: data.user.email
+          });
+        } else {
+          onLogin(true);
+        }
+      }
+    } catch (error) {
+      setIsLoading(false);
+      setMessage("Error al iniciar sesión. Por favor, intenta nuevamente.");
+      console.error('Error en login:', error);
     }
   };
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!email || !password || !confirmPassword) {
       setMessage("Por favor, completa todos los campos.");
       return;
@@ -32,12 +68,46 @@ const LoginScreen = ({ onLogin }) => {
       setMessage("Las contraseñas no coinciden.");
       return;
     }
-    // Lógica de registro simulada
-    setMessage("¡Cuenta creada! Ahora puedes iniciar sesión.");
-    setIsLoginView(true);
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
+
+    setIsLoading(true);
+    setMessage('');
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password: password,
+      });
+
+      if (error) {
+        setMessage(error.message || "Error al crear la cuenta.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Esperar un momento para asegurar que la sesión esté establecida
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Verificar que la sesión esté activa
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setMessage("Error: La sesión no se estableció correctamente. Por favor, intenta nuevamente.");
+          setIsLoading(false);
+          return;
+        }
+
+        setIsLoading(false);
+        // Navegar a completar perfil
+        navigation?.navigate('CompleteProfile', { 
+          userId: data.user.id, 
+          email: email.trim()
+        });
+      }
+    } catch (error) {
+      setIsLoading(false);
+      setMessage("Error al registrar. Por favor, intenta nuevamente.");
+      console.error('Error en registro:', error);
+    }
   };
 
   return (
@@ -57,6 +127,8 @@ const LoginScreen = ({ onLogin }) => {
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoComplete="off"
+          textContentType="none"
         />
         <TextInput
           style={styles.input}
@@ -75,10 +147,15 @@ const LoginScreen = ({ onLogin }) => {
           />
         )}
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={isLoginView ? handleLogin : handleRegister}
+          disabled={!!isLoading}
         >
-          <Text style={styles.buttonText}>{isLoginView ? 'Ingresar' : 'Crear Cuenta'}</Text>
+          {isLoading ? (
+            <ActivityIndicator color={colors.botones.textoPrimario} />
+          ) : (
+            <Text style={styles.buttonText}>{isLoginView ? 'Ingresar' : 'Crear Cuenta'}</Text>
+          )}
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryButton}
@@ -183,6 +260,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     fontSize: 14,
     color: 'red',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });
 

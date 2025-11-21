@@ -1,12 +1,11 @@
 {
   "expo": {
-    "name": "pet_finder_care",
-    "slug": "pet_finder_care",
+    "name": "Pet Finder & Care",
+    "slug": "pet-finder-care",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

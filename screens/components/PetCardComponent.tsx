@@ -1,4 +1,4 @@
-import { View , Text, StyleSheet, TouchableOpacity} from "react-native"
+import { View , Text, StyleSheet, TouchableOpacity, Image} from "react-native"
 import colors from "../../data/colors.json";
 
 import { useNavigation } from "@react-navigation/native";
@@ -11,6 +11,7 @@ interface IPet {
   descripcion: string
   detalle: string
   distancia: string
+  image_url?: string
 }
 
 export default function PetCard(props: IPet) { 
@@ -23,14 +24,36 @@ export default function PetCard(props: IPet) {
     navigation.navigate("NearbyPetDetailScreen", { mascota : props })
   }
 
-  const {id, tipo, nombre, estado, descripcion, detalle, distancia } = props
+  const {id, tipo, nombre, estado, descripcion, detalle, distancia, image_url } = props
+
+  // Obtener URL pública de la imagen desde Supabase Storage
+  const getImageUrl = () => {
+    if (!image_url) return null;
+    // Si ya es una URL completa (como las que devuelve getPublicUrl), retornarla directamente
+    if (image_url.startsWith('http://') || image_url.startsWith('https://')) {
+      return image_url;
+    }
+    // Si es solo el nombre del archivo, construir la URL pública
+    // Esto es un fallback por si acaso
+    return null; // Por ahora, si no es URL completa, no mostramos imagen
+  };
+
+  const imageUrl = getImageUrl();
 
   return (
     <TouchableOpacity style={ styles.card } onPress={ handleGoToPetDetail }>
-      {/* Placeholder de Foto */}
-      <View style={styles.petIcon}>
-        <Text>{tipo}</Text>
-      </View>
+      {/* Foto de la Mascota o Placeholder */}
+      {imageUrl ? (
+        <Image 
+          source={{ uri: imageUrl }} 
+          style={styles.petImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.petIcon}>
+          <Text>{tipo}</Text>
+        </View>
+      )}
       
       {/* Información de la Mascota */}
       <View style={{flex:1}}>
@@ -64,11 +87,21 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   petIcon: {
-    borderRadius: 6,
+    width: 60,
+    height: 60,
+    borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 16,
     marginRight: 10,
-    backgroundColor: "#aaaaaaff"
+    backgroundColor: "#aaaaaaff",
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  petImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 10,
   },
   petName: {
     fontSize: 16,

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch, ActivityIndicator } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
 import colors from "../data/colors.json";
 import PetCard from "./components//PetCardComponent";
+import { supabase } from "../supabase/client/supabaseClient";
 
 interface IPet {
   id: string
@@ -14,60 +15,14 @@ interface IPet {
   distancia: string
 }
 
-const data : IPet[]= [
-  {
-    id: "1",
-    tipo: 'Perro',
-    nombre: 'Tobey',
-    estado: 'Perdido',
-    descripcion: 'Border Collie, macho, blanco y negro',
-    detalle: 'Visto por última vez: Parque Central, hace 3 horas',
-    distancia: '2.1 km de ti',
-  },
-  {
-    id: "2",
-    tipo: 'Gato',
-    nombre: 'Luna',
-    estado: 'Encontrado',
-    descripcion: 'Gata tricolor, pequeña, sin collar',
-    detalle: 'Encontrada: Calle Falsa 123, ayer',
-    distancia: '4.5 km de ti',
-  },
-  {
-    id: "3",
-    tipo: 'Perro',
-    nombre: 'Leo',
-    estado: 'Perdido',
-    descripcion: 'Pitbull, macho, cicatriz en ojo izquierdo',
-    detalle: 'Perdido desde: Barrio Los Pinos, hace 2 días',
-    distancia: '6.8 km de ti',
-  },
-  {
-    id: "4",
-    tipo: 'Gato',
-    nombre: 'Antonio',
-    estado: 'Perdido',
-    descripcion: 'Naranja, macho, usa botas',
-    detalle: 'Perdido desde: Barrio Los Pinos, hace 2 días',
-    distancia: '1.1 km de ti',
-  },
-  {
-    id: "5",
-    tipo: 'Perro',
-    nombre: 'Jake',
-    estado: 'Encontrado',
-    descripcion: 'Bulldog, macho, clarito',
-    detalle: 'Perdido desde: Barrio Los Pinos, hace 2 días',
-    distancia: '1.1 km de ti',
-  },
-];
-
 export default function NearbyPetsScreen() {
   const [filtroPerdidas, setFiltroPerdidas] = useState('Todas');
   const [modalFiltrosVisible, setModalFiltrosVisible] = useState(false);
-
   const [soloConFoto, setSoloConFoto] = useState(false);
   const [menosDe5km, setMenosDe5km] = useState(false);
+  const [pets, setPets] = useState<IPet[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   
   {/*
   const renderCard = ( {item} ) => {
@@ -109,11 +64,77 @@ export default function NearbyPetsScreen() {
   };
   */}
 
-  const mascotasFiltradas : IPet[] = data.filter( (item) => {
-    if (filtroPerdidas === "Todas") return item;
-    if (filtroPerdidas === "Perdidas") return item.estado === "Perdido";
-    if (filtroPerdidas === "Encontradas") return item.estado === "Encontrado";
-    return true;
+  // Cargar mascotas desde Supabase
+  useEffect(() => {
+    loadPets();
+  }, []);
+
+  // Recargar cuando cambie el filtro
+  useEffect(() => {
+    loadPets();
+  }, [filtroPerdidas, soloConFoto]);
+
+  const loadPets = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Construir la query base
+      let query = supabase
+        .from('pets')
+        .select('id, name, species, breed, description, location, image_url, status, created_at')
+        .order('created_at', { ascending: false });
+
+      // Filtrar por estado si no es "Todas"
+      if (filtroPerdidas === "Perdidas") {
+        query = query.eq('status', 'perdida');
+      } else if (filtroPerdidas === "Encontradas") {
+        query = query.eq('status', 'encontrada');
+      }
+
+      // Filtrar solo con foto si está activado
+      if (soloConFoto) {
+        query = query.not('image_url', 'is', null);
+      }
+
+      const { data: petsData, error } = await query;
+
+      if (error) {
+        console.error('Error al cargar mascotas:', error);
+        setPets([]);
+        return;
+      }
+
+      // Mapear los datos de Supabase al formato que espera el componente
+      const mappedPets: IPet[] = (petsData || []).map((pet: any) => ({
+        id: pet.id,
+        tipo: pet.species === 'perro' ? 'Perro' : pet.species === 'gato' ? 'Gato' : pet.species,
+        nombre: pet.name || 'Sin nombre',
+        estado: pet.status === 'perdida' ? 'Perdido' : pet.status === 'encontrada' ? 'Encontrado' : 'Desconocido',
+        descripcion: pet.description || 'Sin descripción',
+        detalle: pet.location ? `📍 ${pet.location}` : '📍 Ubicación no especificada',
+        distancia: 'Distancia no disponible', // Por ahora, se puede calcular después con geolocalización
+        image_url: pet.image_url || null, // Incluir la URL de la imagen
+      }));
+
+      setPets(mappedPets);
+    } catch (error) {
+      console.error('Error al cargar mascotas:', error);
+      setPets([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Filtrar por búsqueda
+  const mascotasFiltradas: IPet[] = pets.filter((item) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      item.nombre.toLowerCase().includes(query) ||
+      item.descripcion.toLowerCase().includes(query) ||
+      item.tipo.toLowerCase().includes(query) ||
+      item.detalle.toLowerCase().includes(query)
+    );
   });
 
   return (
@@ -178,7 +199,7 @@ export default function NearbyPetsScreen() {
           <Modal
             animationType="slide"
             transparent={true}
-            visible={modalFiltrosVisible}
+            visible={!!modalFiltrosVisible}
             onRequestClose={() => setModalFiltrosVisible(false)}
           >
             <View style={styles.modalOverlay}>
@@ -223,6 +244,8 @@ export default function NearbyPetsScreen() {
           style={styles.input}
           placeholder='Buscar por raza, color, etc.'
           placeholderTextColor={colors.texto.secundario}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
         />
         
         {/* Lista */}
@@ -234,17 +257,29 @@ export default function NearbyPetsScreen() {
           contentContainerStyle={{ paddingBottom: 80 }}
         />
         */}
-        <FlatList
-        data= {mascotasFiltradas}
-        keyExtractor={( item ) => item.id}
-        renderItem={( {item} ) => <PetCard {...item} />}
-        contentContainerStyle= {{ paddingBottom: 80, margin: 15 }}
-        ListEmptyComponent= {
-          <Text style={{ textAlign: "center", marginTop: 20, color: colors.texto.secundario }}>
-            No hay mascotas {filtroPerdidas.toLowerCase()} en este momento.
-          </Text>
-        }
-        />
+        {isLoading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
+            <ActivityIndicator size="large" color={colors.primarios.indigo} />
+            <Text style={{ marginTop: 10, color: colors.texto.secundario }}>Cargando mascotas...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={mascotasFiltradas}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <PetCard {...item} />}
+            contentContainerStyle={{ paddingBottom: 80, margin: 15 }}
+            ListEmptyComponent={
+              <Text style={{ textAlign: "center", marginTop: 20, color: colors.texto.secundario }}>
+                {searchQuery 
+                  ? `No se encontraron mascotas que coincidan con "${searchQuery}"`
+                  : `No hay mascotas ${filtroPerdidas.toLowerCase()} en este momento.`
+                }
+              </Text>
+            }
+            refreshing={isLoading}
+            onRefresh={loadPets}
+          />
+        )}
         </View>
       </View>
   );
