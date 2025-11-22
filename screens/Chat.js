@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,58 +12,175 @@ import {
   StatusBar,
   Modal,
   Pressable,
+  ActivityIndicator
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-// Importamos tus colores reales
 import colors from "../data/colors.json";
+import { supabase } from "../supabase/client/supabaseClient"; // Cliente Supabase
 
 export default function Chat({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
-  // Avatar: Si viene por parámetro úsalo, si no, usa uno genérico
-  const avatarUri =
-    route?.params?.avatarUrl ||
-    "https://cdn-icons-png.flaticon.com/512/616/616408.png";
+  // 1. RECIBIR PARÁMETROS (Dueño y Mascota)
+  const { ownerId, petName, avatarUrl } = route.params || {};
 
+  const avatarUri = avatarUrl || "https://cdn-icons-png.flaticon.com/512/616/616408.png";
+  const chatTitle = petName ? `Consulta sobre ${petName}` : "Chat Pet Finder";
+
+  // Estados
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const [messages, setMessages] = useState([
-    { id: "1", text: "¡Bienvenido a Pet Finder 🐾!", from: "system" },
-  ]);
+  // Referencias para no perder valores entre renderizados
+  const currentUserRef = useRef(null);
+  const conversationIdRef = useRef(null);
 
-  const [input, setInput] = useState("");
+  // --- 2. INICIALIZAR CHAT (Buscar usuario y conversación) ---
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        // A. Obtener mi usuario actual
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return; // Si no hay usuario logueado, no carga nada
+        currentUserRef.current = user.id;
 
-  const sendMessage = () => {
-    if (input.trim().length === 0) return;
+        // B. Buscar si ya existe una conversación entre YO y el DUEÑO
+        // La query busca: (user_1 = YO y user_2 = DUEÑO) O (user_1 = DUEÑO y user_2 = YO)
+        const { data: existingConv, error } = await supabase
+          .from('conversations')
+          .select('id')
+          .or(`and(user_1.eq.${user.id},user_2.eq.${ownerId}),and(user_1.eq.${ownerId},user_2.eq.${user.id})`)
+          .maybeSingle(); // Usamos maybeSingle para que no de error si no existe
 
-    const newMessage = {
-      id: Date.now().toString(),
-      text: input,
-      from: "user",
+        if (existingConv) {
+          // Si ya hablaron antes, cargamos el ID y los mensajes
+          conversationIdRef.current = existingConv.id;
+          await loadMessages(existingConv.id);
+          subscribeToMessages(existingConv.id);
+        } else {
+          // Si es chat nuevo, dejamos de cargar (se creará al enviar el primer mensaje)
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error iniciando chat:", err);
+        setLoading(false);
+      }
     };
 
-    // Agregamos al final del array (la lista invertida se encarga del orden visual)
-    setMessages([...messages, newMessage]);
-    setInput("");
+    initChat();
+
+    // Limpieza al salir de la pantalla
+    return () => {
+      supabase.removeAllChannels();
+    };
+  }, [ownerId]);
+
+  // --- 3. CARGAR MENSAJES VIEJOS ---
+  const loadMessages = async (convId) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: false }); // Orden DESC para la lista invertida
+
+    if (!error && data) {
+      setMessages(data);
+    }
+    setLoading(false);
   };
 
-  const renderItem = ({ item }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.from === "user" ? styles.userMessage : styles.systemMessage,
-      ]}
-    >
-      <Text style={item.from === "user" ? styles.userText : styles.systemText}>
-        {item.text}
-      </Text>
-    </View>
-  );
+  // --- 4. SUSCRIPCIÓN REALTIME ---
+  const subscribeToMessages = (convId) => {
+    supabase
+      .channel(`chat:${convId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` },
+        (payload) => {
+          // Si el mensaje nuevo NO es mío, lo agrego (los míos ya los agrego localmente)
+          if (payload.new.sender_id !== currentUserRef.current) {
+            setMessages((prev) => [payload.new, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+  };
+
+  // --- 5. ENVIAR MENSAJE ---
+  const sendMessage = async () => {
+    if (input.trim().length === 0) return;
+
+    const textToSend = input;
+    setInput(""); // Limpiar input visualmente rápido
+
+    try {
+      let convId = conversationIdRef.current;
+
+      // Si no existe conversación, la creamos ahora (Primera vez)
+      if (!convId) {
+        const { data: newConv, error: createError } = await supabase
+          .from('conversations')
+          .insert([
+            { user_1: currentUserRef.current, user_2: ownerId }
+          ])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        convId = newConv.id;
+        conversationIdRef.current = convId;
+        subscribeToMessages(convId); // Nos suscribimos a la nueva sala
+      }
+
+      // Insertar mensaje en la base de datos
+      const { data: msgData, error: msgError } = await supabase
+        .from('messages')
+        .insert([
+          {
+            conversation_id: convId,
+            sender_id: currentUserRef.current,
+            content: textToSend,
+          }
+        ])
+        .select()
+        .single();
+
+      if (msgError) throw msgError;
+
+      // Agregamos a la lista local
+      setMessages((prev) => [msgData, ...prev]);
+
+    } catch (err) {
+      console.error("Error enviando mensaje:", err);
+      alert("Error al enviar mensaje. Intenta de nuevo.");
+    }
+  };
+
+  // Renderizado de cada burbuja
+  const renderItem = ({ item }) => {
+    // Verificamos si el mensaje es mío comparando IDs
+    const isMyMessage = item.sender_id === currentUserRef.current;
+
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          isMyMessage ? styles.userMessage : styles.systemMessage,
+        ]}
+      >
+        <Text style={isMyMessage ? styles.userText : styles.systemText}>
+          {item.content || item.text}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.mainContainer}>
-      {/* Barra de estado con tu color primario */}
       <StatusBar backgroundColor={colors.primarios.indigo} barStyle="light-content" />
 
       {/* HEADER */}
@@ -75,15 +192,14 @@ export default function Chat({ navigation, route }) {
           <Ionicons name="arrow-back" size={28} color={colors.botones.textoPrimario} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Pet Finder 🐾</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{chatTitle}</Text>
 
-        {/* Avatar Clickeable */}
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Image source={{ uri: avatarUri }} style={styles.avatar} />
         </TouchableOpacity>
       </View>
 
-      {/* MODAL DE ZOOM */}
+      {/* MODAL ZOOM */}
       <Modal visible={modalVisible} animationType="fade" transparent>
         <Pressable
           style={styles.modalBackground}
@@ -96,23 +212,27 @@ export default function Chat({ navigation, route }) {
       {/* CUERPO DEL CHAT */}
       <KeyboardAvoidingView
         style={styles.container}
-        // Android maneja el teclado nativamente mejor con undefined si tienes adjustResize en app.json
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <FlatList
-          data={[...messages].reverse()} // Invertimos los datos para la lista
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          inverted // La lista crece desde abajo
-          contentContainerStyle={styles.flatListContent}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primarios.indigo} />
+          </View>
+        ) : (
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderItem}
+            inverted
+            contentContainerStyle={styles.flatListContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
 
         {/* INPUT BAR */}
         <View
           style={[
             styles.inputContainer,
-            // Padding dinámico para iPhones sin botón home o Androids con gestos
             { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
           ]}
         >
@@ -136,18 +256,16 @@ export default function Chat({ navigation, route }) {
   );
 }
 
-// 🎨 ESTILOS BASADOS EN TU colors.json
+// 🎨 ESTILOS (Sin cambios, tal cual los pasaste)
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    // Usamos el fondo de componentes (blanco) para el chat para que sea limpio
-    backgroundColor: colors.fondo.componentes,
+    backgroundColor: colors.fondo.app,
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.primarios.indigo, // Tu color principal (#6366f1)
+    backgroundColor: colors.primarios.indigo,
     paddingVertical: 15,
     paddingHorizontal: 16,
     elevation: 4,
@@ -156,27 +274,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     zIndex: 10,
   },
-
   backButton: {
     padding: 8,
     marginRight: 10,
   },
-
   headerTitle: {
     flex: 1,
-    color: colors.botones.textoPrimario, // Blanco
+    color: colors.botones.textoPrimario,
     fontWeight: "bold",
     fontSize: 20,
   },
-
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.fondo.componentes,
+    borderWidth: 1,
+    borderColor: "white",
   },
-
-  /* MODAL */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.8)",
@@ -189,16 +304,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     resizeMode: "cover",
   },
-
   container: {
     flex: 1,
   },
-
   flatListContent: {
     paddingHorizontal: 12,
     paddingVertical: 20,
   },
-
   messageBubble: {
     padding: 12,
     borderRadius: 16,
@@ -206,28 +318,24 @@ const styles = StyleSheet.create({
     maxWidth: "80%",
     elevation: 1,
   },
-
   userMessage: {
-    backgroundColor: colors.primarios.indigo, // Mensaje enviado (Indigo)
+    backgroundColor: colors.primarios.indigo,
     alignSelf: "flex-end",
     borderBottomRightRadius: 2,
   },
-
   systemMessage: {
-    backgroundColor: colors.fondo.app, // Mensaje recibido (Indigo muy claro #e0e7ff)
+    backgroundColor: colors.fondo.componentes,
     alignSelf: "flex-start",
     borderBottomLeftRadius: 2,
   },
-
   userText: {
     fontSize: 16,
-    color: colors.botones.textoPrimario, // Blanco
+    color: colors.botones.textoPrimario,
   },
   systemText: {
     fontSize: 16,
-    color: colors.texto.primario, // Gris oscuro (#374151)
+    color: colors.texto.primario,
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -235,9 +343,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderColor: colors.bordes.primario, // (#d1d5db)
+    borderColor: colors.bordes.primario,
   },
-
   input: {
     flex: 1,
     height: 50,
@@ -245,12 +352,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#F9FAFB", // Un gris muy sutil para el input (hardcoded standard)
+    backgroundColor: "#F9FAFB",
     fontSize: 16,
     marginRight: 10,
     color: colors.texto.primario,
   },
-
   sendButton: {
     backgroundColor: colors.primarios.indigo,
     width: 50,
