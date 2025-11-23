@@ -200,7 +200,7 @@ const CrearMascotaScreen = ({ navigation }) => {
           validationSchema={petSchema}
           onSubmit={handleSubmitForm}
         >
-          {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+          {({ handleChange, handleBlur, handleSubmit, values, errors, touched, setFieldValue }) => (
             <View style={styles.card}>
               {/* FOTO */}
               <TouchableOpacity style={styles.photoContainer} onPress={handlePickImage}>
@@ -262,12 +262,15 @@ const CrearMascotaScreen = ({ navigation }) => {
 
                 <TouchableOpacity
                   style={styles.chipContainer}
-                  onPress={() =>
-                    handleChange('edad_unidad')(
-                      values.edad_unidad === 'mes' ? 'año' : 'mes'
-                    )
-                  }
-                >
+                  onPress={() => {
+                    const next = 
+                       values.edad_unidad === 'mes'
+                         ? 'año'
+                         : 'mes';
+
+                  setFieldValue('edad_unidad', next);
+                }}
+              >
                   <Text style={styles.chipText}>
                     {values.edad_unidad === 'mes'
                       ? 'Mes(es)'
@@ -275,8 +278,8 @@ const CrearMascotaScreen = ({ navigation }) => {
                       ? 'Año(s)'
                       : 'Unidad'}
                   </Text>
-                </TouchableOpacity>
-              </View>
+               </TouchableOpacity>
+                </View>
 
               {/* PELAJE */}
               <Text style={styles.label}>Pelaje</Text>
