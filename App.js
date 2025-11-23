@@ -10,7 +10,15 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import CompleteProfileScreen from './screens/CompleteProfileScreen';
 import TabNavigator from './screens/TabNavigator';
-import misMascotasScreen from './screens/misMascotasScreen';
+import MisMascotasScreen from './screens/MisMascostasScreen';
+import CrearMascotaScreen from './screens/CrearMascotaScreen';
+import VerMascotaScreen from './screens/VerMascotaScreen';
+import EditarMascotaScreen from './screens/EditarMascotaScreen'; 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+
+
+
 import Chat from './screens/Chat';
 
 const Stack = createNativeStackNavigator();
@@ -84,31 +92,40 @@ const App = () => {
     return null; // O puedes mostrar un loading spinner
   }
 
-  return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isLoggedin ? (
-          <>
-            <Stack.Screen name="Dashboard">
-              {props => <TabNavigator {...props} onLogout={handleLogout} />}
-            </Stack.Screen>
-            
-            <Stack.Screen name="misMascotas" component={misMascotasScreen} />
-            <Stack.Screen name="Mensajes" component={Chat} />
-          </>
-        ) : (
-          <>
-            <Stack.Screen name="Login">
-              {props => <LoginScreen {...props} onLogin={handleLoginSuccess} />}
-            </Stack.Screen>
-            <Stack.Screen name="Register" component={RegisterScreen} />
-            <Stack.Screen name="CompleteProfile">
-              {props => <CompleteProfileScreen {...props} onLoginSuccess={handleLoginSuccess} />}
-            </Stack.Screen>
-          </>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+
+          {isLoggedin ? (
+            <>
+              <Stack.Screen name="Dashboard">
+                {props => <TabNavigator {...props} onLogout={handleLogout} />}
+              </Stack.Screen>
+
+              <Stack.Screen name="MisMascotas" component={MisMascotasScreen} />
+              <Stack.Screen name="CrearMascota" component={CrearMascotaScreen} />
+              <Stack.Screen name="VerMascota" component={VerMascotaScreen} />
+              <Stack.Screen name="EditarMascota" component={EditarMascotaScreen} />
+              <Stack.Screen name="Mensajes" component={Chat} />
+            </>
+          ) : (
+            <>
+              <Stack.Screen name="Login">
+                {props => <LoginScreen {...props} onLogin={handleLoginSuccess} />}
+              </Stack.Screen>
+
+              <Stack.Screen name="Register" component={RegisterScreen} />
+
+              <Stack.Screen name="CompleteProfile">
+                {props => <CompleteProfileScreen {...props} onLoginSuccess={handleLoginSuccess} />}
+              </Stack.Screen>
+            </>
+          )}
+
+        </Stack.Navigator>
+      </NavigationContainer>
+    </GestureHandlerRootView>
   );
 };
 
