@@ -225,54 +225,78 @@ const CompleteProfileScreen = ({ route, navigation, onLoginSuccess }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView 
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.header}>
-        <MaterialCommunityIcons name="account-circle" size={60} color={colors.primarios.indigo} />
+        <MaterialCommunityIcons name="account-circle" size={72} color={colors.primarios.indigo} />
         <Text style={styles.title}>Completa tu Perfil</Text>
         <Text style={styles.subtitle}>Necesitamos algunos datos adicionales para continuar</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.label}>Nombre</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Juan"
-          value={firstName}
-          onChangeText={setFirstName}
-          autoCapitalize="words"
-        />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Nombre</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Juan"
+            placeholderTextColor={colors.texto.secundario}
+            value={firstName}
+            onChangeText={setFirstName}
+            autoCapitalize="words"
+            autoCorrect={false}
+            textContentType="givenName"
+          />
+        </View>
 
-        <Text style={styles.label}>Apellido</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Pérez"
-          value={lastName}
-          onChangeText={setLastName}
-          autoCapitalize="words"
-        />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Apellido</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Pérez"
+            placeholderTextColor={colors.texto.secundario}
+            value={lastName}
+            onChangeText={setLastName}
+            autoCapitalize="words"
+            autoCorrect={false}
+            textContentType="familyName"
+          />
+        </View>
 
-        <Text style={styles.label}>Teléfono</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: +54 11 1234-5678"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-        />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Teléfono</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: +54 11 1234-5678"
+            placeholderTextColor={colors.texto.secundario}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            autoCorrect={false}
+            textContentType="telephoneNumber"
+          />
+        </View>
 
-        <Text style={styles.label}>Ciudad</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Buenos Aires"
-          value={city}
-          onChangeText={setCity}
-          autoCapitalize="words"
-        />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Ciudad</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Buenos Aires"
+            placeholderTextColor={colors.texto.secundario}
+            value={city}
+            onChangeText={setCity}
+            autoCapitalize="words"
+            autoCorrect={false}
+            textContentType="addressCity"
+          />
+        </View>
 
         <TouchableOpacity
           style={[styles.button, isLoading && styles.buttonDisabled]}
           onPress={handleCompleteProfile}
           disabled={!!isLoading}
+          activeOpacity={0.7}
         >
           {isLoading ? (
             <ActivityIndicator color={colors.botones.textoPrimario} />
@@ -289,79 +313,82 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
+    paddingTop: 60,
     backgroundColor: colors.fondo.app,
   },
   header: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 30,
+    marginTop: 20,
+    marginBottom: 32,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 34,
+    fontWeight: '700',
     color: colors.texto.primario,
-    marginTop: 16,
+    marginTop: 20,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 17,
     color: colors.texto.secundario,
     marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 20,
+    fontWeight: '400',
   },
   card: {
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
     backgroundColor: colors.fondo.componentes,
-    padding: 24,
-    borderRadius: 16,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 8,
+    padding: 0,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  inputGroup: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.texto.primario,
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.texto.secundario,
     marginBottom: 8,
-    marginTop: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
     width: '100%',
-    height: 50,
-    borderColor: colors.bordes.primario,
-    borderWidth: 1,
-    borderRadius: 8,
+    height: 44,
+    backgroundColor: colors.fondo.componentes,
+    borderRadius: 10,
     paddingHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#F9FAFB',
-    fontSize: 16,
+    fontSize: 17,
     color: colors.texto.primario,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
   },
   button: {
     width: '100%',
     backgroundColor: colors.botones.primario,
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 8,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    minHeight: 50,
+    justifyContent: 'center',
   },
   buttonText: {
     color: colors.botones.textoPrimario,
-    fontWeight: 'bold',
-    fontSize: 18,
+    fontWeight: '600',
+    fontSize: 17,
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
 });
 

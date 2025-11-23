@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Platform, Modal } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker'; // Necesita 'npx expo install expo-image-picker'
 import 'react-native-get-random-values'; 
 import { v4 as uuidv4 } from 'uuid'; // Necesita 'npm install uuid react-native-get-random-values'
@@ -10,6 +12,8 @@ import colors from '../data/colors.json';
 import { supabase } from '../supabase/client/supabaseClient'; 
 
 const ReportPetScreen = ({ onBackPress }) => {
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [reportType, setReportType] = useState('perdida');
   const [petName, setPetName] = useState('');
   const [petType, setPetType] = useState('perro');
@@ -209,89 +213,199 @@ const ReportPetScreen = ({ onBackPress }) => {
   };
 
   return (
-    <ScrollView style={styles.fullScreen} contentContainerStyle={styles.container}>
-      <View style={styles.header}>
+    <View style={styles.fullScreen}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={28} color={colors.botones.textoPrimario} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Reportar Mascota</Text>
+        <View style={styles.backButton} />
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>¿Mascota Perdida o Encontrada?</Text>
-        <View style={styles.segmentedControlContainer}>
-          <TouchableOpacity
-            style={[styles.segmentedButton, reportType === 'perdida' && styles.segmentedButtonActive]}
-            onPress={() => setReportType('perdida')}
-          >
-            <Text style={[styles.segmentedButtonText, reportType === 'perdida' && styles.segmentedButtonTextActive]}>Perdida</Text>
-          </TouchableOpacity><TouchableOpacity // <-- CORREGIDO: Etiquetas unidas
-            style={[styles.segmentedButton, reportType === 'encontrada' && styles.segmentedButtonActive]}
-            onPress={() => setReportType('encontrada')}
-          >
-            <Text style={[styles.segmentedButtonText, reportType === 'encontrada' && styles.segmentedButtonTextActive]}>Encontrada</Text>
-          </TouchableOpacity>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={[styles.container, { 
+          paddingBottom: 68 + Math.max(insets.bottom, 8) + 20 
+        }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.card}>
+        <View style={styles.typeSection}>
+          <Text style={styles.sectionLabel}>Tipo de Reporte</Text>
+          <Text style={styles.sectionSubLabel}>¿La mascota está perdida o fue encontrada?</Text>
+          <View style={styles.segmentedControlContainer}>
+            <TouchableOpacity
+              style={[styles.segmentedButton, reportType === 'perdida' && styles.segmentedButtonActive]}
+              onPress={() => setReportType('perdida')}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons 
+                name="alert-circle" 
+                size={18} 
+                color={reportType === 'perdida' ? colors.botones.textoPrimario : colors.texto.secundario} 
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.segmentedButtonText, reportType === 'perdida' && styles.segmentedButtonTextActive]}>Perdida</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.segmentedButton, reportType === 'encontrada' && styles.segmentedButtonActive]}
+              onPress={() => setReportType('encontrada')}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons 
+                name="check-circle" 
+                size={18} 
+                color={reportType === 'encontrada' ? colors.botones.textoPrimario : colors.texto.secundario} 
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.segmentedButtonText, reportType === 'encontrada' && styles.segmentedButtonTextActive]}>Encontrada</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <Text style={styles.label}>Nombre de la Mascota</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Max, Firulais"
-          value={petName}
-          onChangeText={setPetName}
-        />
-
-        <Text style={styles.label}>Tipo de Mascota</Text>
-        <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={petType}
-            onValueChange={(itemValue) => setPetType(itemValue)}
-            style={styles.picker}
-            itemStyle={styles.pickerItem}
-          >
-            <Picker.Item label="Perro" value="perro" />
-            <Picker.Item label="Gato" value="gato" />
-            <Picker.Item label="Otro" value="otro" />
-          </Picker>
-        </View>
-
-        <Text style={styles.label}>Raza</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Labrador, Siames"
-          value={petBreed}
-          onChangeText={setPetBreed}
-        />
-
-        <Text style={styles.label}>Descripción (colores, tamaño, particularidades)</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          placeholder="Ej: Perro negro, tamaño mediano, con collar rojo..."
-          value={description}
-          onChangeText={setDescription}
-          multiline={true}
-        />
-
-        <Text style={styles.label}>Última Ubicación Conocida</Text>
-        <View style={styles.locationInputContainer}>
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Nombre de la Mascota</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+          </View>
           <TextInput
-            style={[styles.input, styles.locationInput]}
-            placeholder="Arrastra el pin en el mapa o busca..."
-            value={lastLocation}
-            onChangeText={setLastLocation}
+            style={styles.input}
+            placeholder="Ej: Max, Firulais"
+            placeholderTextColor={colors.texto.secundario}
+            value={petName}
+            onChangeText={setPetName}
+            autoCapitalize="words"
+            autoCorrect={false}
           />
-          <MaterialCommunityIcons name="map-marker" size={24} color={colors.primarios.indigo} style={styles.locationIcon} />
         </View>
 
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapText}>Mapa de Ubicación</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Tipo de Mascota</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={petType}
+              onValueChange={(itemValue) => setPetType(itemValue)}
+              style={styles.picker}
+              itemStyle={styles.pickerItem}
+            >
+              <Picker.Item label="Perro" value="perro" />
+              <Picker.Item label="Gato" value="gato" />
+              <Picker.Item label="Otro" value="otro" />
+            </Picker>
+          </View>
         </View>
 
-        <Text style={styles.label}>Fotos de la Mascota</Text>
-        <View style={styles.photoButtonsContainer}>
-          <TouchableOpacity style={styles.photoIconButton} onPress={handleImagePicker}>
-            <MaterialCommunityIcons name="camera" size={36} color={colors.primarios.indigo} />
-          </TouchableOpacity><TouchableOpacity style={styles.photoIconButton} onPress={handleImagePicker}> 
-            <MaterialCommunityIcons name="image-multiple" size={36} color={colors.primarios.indigo} />
-          </TouchableOpacity>
-          {photoUri && <Image source={{ uri: photoUri }} style={{ width: 80, height: 80, marginLeft: 10, borderRadius: 10 }} />}
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Raza</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Labrador, Siames"
+            placeholderTextColor={colors.texto.secundario}
+            value={petBreed}
+            onChangeText={setPetBreed}
+            autoCapitalize="words"
+            autoCorrect={false}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Descripción</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+          </View>
+          <Text style={styles.labelHint}>Colores, tamaño, particularidades que ayuden a identificarla</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Ej: Perro negro, tamaño mediano, con collar rojo..."
+            placeholderTextColor={colors.texto.secundario}
+            value={description}
+            onChangeText={setDescription}
+            multiline={true}
+            textAlignVertical="top"
+            autoCorrect={false}
+            maxLength={500}
+          />
+          <Text style={styles.characterCount}>{description.length}/500</Text>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Última Ubicación Conocida</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+          </View>
+          <View style={styles.locationInputContainer}>
+            <MaterialCommunityIcons name="map-marker" size={20} color={colors.primarios.indigo} style={styles.locationIconLeft} />
+            <TextInput
+              style={[styles.input, styles.locationInput]}
+              placeholder="Ej: Av. Libertador 123, Palermo"
+              placeholderTextColor={colors.texto.secundario}
+              value={lastLocation}
+              onChangeText={setLastLocation}
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
+        <View style={styles.mapSection}>
+          <View style={styles.mapPlaceholder}>
+            <MaterialCommunityIcons name="map" size={40} color={colors.texto.secundario} />
+            <Text style={styles.mapText}>Mapa de Ubicación</Text>
+            <Text style={styles.mapSubText}>Próximamente: podrás seleccionar la ubicación en el mapa</Text>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Foto de la Mascota</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+          </View>
+          <Text style={styles.labelHint}>Una foto clara ayuda a identificar mejor a la mascota</Text>
+          
+          {photoUri ? (
+            <View style={styles.photoPreviewContainer}>
+              <Image 
+                source={{ uri: photoUri }} 
+                style={styles.photoPreviewLarge}
+              />
+              <TouchableOpacity 
+                style={styles.removePhotoButton}
+                onPress={() => {
+                  setPhotoUri(null);
+                  setPhotoAsset(null);
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="close-circle" size={28} color={colors.estado.perdido.base} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.photoButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.photoIconButton} 
+                onPress={handleImagePicker} 
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="camera" size={32} color={colors.primarios.indigo} />
+                <Text style={styles.photoButtonText}>Cámara</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.photoIconButton} 
+                onPress={handleImagePicker} 
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="image-multiple" size={32} color={colors.primarios.indigo} />
+                <Text style={styles.photoButtonText}>Galería</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
         
         <TouchableOpacity 
@@ -301,6 +415,7 @@ const ReportPetScreen = ({ onBackPress }) => {
           ]} 
           onPress={handlePublish}
           disabled={!!(!isFormValid() || isUploading)}
+          activeOpacity={0.7}
         >
           <Text style={[
             styles.publishButtonText,
@@ -309,7 +424,8 @@ const ReportPetScreen = ({ onBackPress }) => {
             {isUploading ? 'Subiendo Foto...' : 'Publicar Aviso'}
           </Text>
         </TouchableOpacity>
-      </View>
+        </View>
+      </ScrollView>
 
       {/* Modal de Éxito */}
       <Modal
@@ -359,7 +475,7 @@ const ReportPetScreen = ({ onBackPress }) => {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -368,105 +484,164 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.fondo.app,
   },
+  scrollView: {
+    flex: 1,
+  },
   container: {
     padding: 0,
     alignItems: 'center',
-    paddingBottom: 100,
+    paddingBottom: 0,
   },
   header: {
     width: '100%',
-    backgroundColor: colors.primarios.indigo,
-    paddingTop: 60,
-    paddingBottom: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.primarios.indigo,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '600',
     color: 'white',
+    flex: 1,
+    textAlign: 'center',
   },
   card: {
-    width: '90%',
+    width: '100%',
     maxWidth: 600,
     backgroundColor: colors.fondo.componentes,
-    padding: 24,
-    borderRadius: 16,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 8,
-    marginTop: 20,
+    padding: 0,
+    borderRadius: 0,
+    marginTop: 0,
+  },
+  typeSection: {
+    paddingHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.texto.secundario,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionSubLabel: {
+    fontSize: 15,
+    fontWeight: '400',
+    color: colors.texto.secundario,
+    marginBottom: 12,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  requiredLabel: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.estado.perdido.base,
+    marginLeft: 4,
+  },
+  characterCount: {
+    fontSize: 13,
+    color: colors.texto.secundario,
+    textAlign: 'right',
+    marginTop: 4,
+  },
+  inputGroup: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'normal',
+    fontSize: 17,
+    fontWeight: '400',
     color: colors.texto.primario,
     marginBottom: 8,
-    marginTop: 15,
+  },
+  labelHint: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: colors.texto.secundario,
+    marginBottom: 8,
+    marginTop: -4,
   },
   input: {
     width: '100%',
-    height: 50,
+    height: 44,
     borderColor: colors.bordes.primario,
-    borderWidth: 1,
-    borderRadius: 8,
+    borderWidth: 0.5,
+    borderRadius: 10,
     paddingHorizontal: 16,
-    marginBottom: 16,
     backgroundColor: colors.fondo.componentes,
-    fontSize: 16,
+    fontSize: 17,
+    color: colors.texto.primario,
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
-    paddingTop: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
   pickerContainer: {
-    marginBottom: 16,
+    marginBottom: 0,
     backgroundColor: colors.fondo.componentes,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
+    overflow: 'hidden',
   },
   picker: {
     width: '100%',
-    height: 50,
-    borderColor: colors.bordes.primario,
-    borderWidth: 1,
-    borderRadius: 8,
+    height: 44,
   },
   pickerItem: {
     color: colors.texto.primario,
-    fontSize: 16,
+    fontSize: 17,
   },
   segmentedControlContainer: {
     flexDirection: 'row',
-    borderRadius: 10,
-    marginBottom: 20,
-    gap: 10,
-    paddingHorizontal: 0
+    borderRadius: 12,
+    marginBottom: 0,
+    marginTop: 8,
+    backgroundColor: colors.fondo.app,
+    padding: 4,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
   },
   segmentedButton: {
     flex: 1,
-    padding: 10,
-    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
     alignItems: 'center',
-    backgroundColor: colors.botones.secundario,
-  },
-  segmentedTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.texto.primario,
-    marginBottom: 10,
+    justifyContent: 'center',
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
   },
   segmentedButtonActive: {
     backgroundColor: colors.primarios.indigo,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   segmentedButtonText: {
-    color: colors.primarios.indigo,
-    fontWeight: 'bold',
+    color: colors.texto.secundario,
+    fontWeight: '600',
+    fontSize: 15,
   },
   segmentedButtonTextActive: {
     color: colors.botones.textoPrimario,
@@ -475,82 +650,120 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderColor: colors.bordes.primario,
-    borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 16,
+    borderWidth: 0.5,
+    borderRadius: 10,
     backgroundColor: colors.fondo.componentes,
   },
   locationInput: {
     flex: 1,
-    height: 50,
+    height: 44,
     borderWidth: 0,
     marginBottom: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
   },
-  locationIcon: {
-    marginRight: 16,
-    color: colors.primarios.indigo,
+  locationIconLeft: {
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  mapSection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   mapPlaceholder: {
     width: '100%',
-    height: 150,
+    height: 200,
     backgroundColor: colors.fondo.app,
-    borderRadius: 10,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
+    borderStyle: 'dashed',
   },
   mapText: {
-    fontSize: 18,
-    color: colors.primarios.indigo,
-    fontWeight: 'bold',
+    fontSize: 17,
+    color: colors.texto.primario,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  mapSubText: {
+    fontSize: 13,
+    color: colors.texto.secundario,
+    fontWeight: '400',
+    marginTop: 4,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   photoButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    marginBottom: 16,
-    gap: 10,
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 12,
   },
   photoIconButton: {
-    width: 80,
-    height: 80,
+    width: 120,
+    height: 120,
     backgroundColor: colors.fondo.app,
-    borderRadius: 10,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.primarios.indigo,
+    borderStyle: 'dashed',
+  },
+  photoButtonText: {
+    fontSize: 13,
+    color: colors.primarios.indigo,
+    fontWeight: '600',
+    marginTop: 8,
+  },
+  photoPreviewContainer: {
+    marginTop: 8,
+    position: 'relative',
+    alignItems: 'center',
+  },
+  photoPreviewLarge: {
+    width: '100%',
+    height: 250,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: colors.fondo.componentes,
+    borderRadius: 20,
+    padding: 4,
   },
   publishButton: {
     width: '100%',
     backgroundColor: colors.primarios.indigo,
-    padding: 16,
-    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 10,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 8,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    minHeight: 50,
+    justifyContent: 'center',
   },
   publishButtonText: {
     color: colors.botones.textoPrimario,
-    fontWeight: 'bold',
-    fontSize: 18,
+    fontWeight: '600',
+    fontSize: 17,
   },
   publishButtonDisabled: {
-    backgroundColor: '#f3f4f6', // Gris claro para indicar desactivado
-    borderWidth: 2,
-    borderColor: colors.bordes.primario, // Borde gris para mantener estructura de botón
-    borderStyle: 'solid',
-    shadowColor: 'transparent', // Sin sombra cuando está desactivado
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
+    backgroundColor: colors.fondo.app,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
   },
   publishButtonTextDisabled: {
     color: colors.texto.secundario,
-    fontWeight: '600', // Un poco menos bold pero aún visible
+    fontWeight: '600',
   },
   // Estilos del Modal de Éxito
   modalOverlay: {

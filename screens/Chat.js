@@ -13,15 +13,14 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-// Importamos tus colores reales
 import colors from "../data/colors.json";
 
 export default function Chat({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
-  // Avatar: Si viene por parámetro úsalo, si no, usa uno genérico
   const avatarUri =
     route?.params?.avatarUrl ||
     "https://cdn-icons-png.flaticon.com/512/616/616408.png";
@@ -43,7 +42,6 @@ export default function Chat({ navigation, route }) {
       from: "user",
     };
 
-    // Agregamos al final del array (la lista invertida se encarga del orden visual)
     setMessages([...messages, newMessage]);
     setInput("");
   };
@@ -63,56 +61,46 @@ export default function Chat({ navigation, route }) {
 
   return (
     <View style={styles.mainContainer}>
-      {/* Barra de estado con tu color primario */}
       <StatusBar backgroundColor={colors.primarios.indigo} barStyle="light-content" />
 
       {/* HEADER */}
       <View style={[styles.header, { marginTop: insets.top }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color={colors.botones.textoPrimario} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Pet Finder 🐾</Text>
 
-        {/* Avatar Clickeable */}
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Image source={{ uri: avatarUri }} style={styles.avatar} />
         </TouchableOpacity>
       </View>
 
-      {/* MODAL DE ZOOM */}
+      {/* MODAL ZOOM */}
       <Modal visible={modalVisible} animationType="fade" transparent>
-        <Pressable
-          style={styles.modalBackground}
-          onPress={() => setModalVisible(false)}
-        >
+        <Pressable style={styles.modalBackground} onPress={() => setModalVisible(false)}>
           <Image source={{ uri: avatarUri }} style={styles.modalImage} />
         </Pressable>
       </Modal>
 
-      {/* CUERPO DEL CHAT */}
+      {/* CHAT */}
       <KeyboardAvoidingView
         style={styles.container}
-        // Android maneja el teclado nativamente mejor con undefined si tienes adjustResize en app.json
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <FlatList
-          data={[...messages].reverse()} // Invertimos los datos para la lista
+          data={[...messages].reverse()}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          inverted // La lista crece desde abajo
+          inverted
           contentContainerStyle={styles.flatListContent}
           showsVerticalScrollIndicator={false}
         />
 
-        {/* INPUT BAR */}
+        {/* INPUT */}
         <View
           style={[
             styles.inputContainer,
-            // Padding dinámico para iPhones sin botón home o Androids con gestos
             { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
           ]}
         >
@@ -136,18 +124,16 @@ export default function Chat({ navigation, route }) {
   );
 }
 
-// 🎨 ESTILOS BASADOS EN TU colors.json
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    // Usamos el fondo de componentes (blanco) para el chat para que sea limpio
     backgroundColor: colors.fondo.componentes,
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.primarios.indigo, // Tu color principal (#6366f1)
+    backgroundColor: colors.primarios.indigo,
     paddingVertical: 15,
     paddingHorizontal: 16,
     elevation: 4,
@@ -164,7 +150,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     flex: 1,
-    color: colors.botones.textoPrimario, // Blanco
+    color: colors.botones.textoPrimario,
     fontWeight: "bold",
     fontSize: 20,
   },
@@ -176,13 +162,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fondo.componentes,
   },
 
-  /* MODAL */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
+
   modalImage: {
     width: "85%",
     height: "45%",
@@ -192,6 +178,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
+    backgroundColor: colors.fondo.app,
   },
 
   flatListContent: {
@@ -208,24 +195,25 @@ const styles = StyleSheet.create({
   },
 
   userMessage: {
-    backgroundColor: colors.primarios.indigo, // Mensaje enviado (Indigo)
+    backgroundColor: colors.primarios.indigo,
     alignSelf: "flex-end",
     borderBottomRightRadius: 2,
   },
 
   systemMessage: {
-    backgroundColor: colors.fondo.app, // Mensaje recibido (Indigo muy claro #e0e7ff)
+    backgroundColor: colors.fondo.app,
     alignSelf: "flex-start",
     borderBottomLeftRadius: 2,
   },
 
   userText: {
     fontSize: 16,
-    color: colors.botones.textoPrimario, // Blanco
+    color: colors.botones.textoPrimario,
   },
+
   systemText: {
     fontSize: 16,
-    color: colors.texto.primario, // Gris oscuro (#374151)
+    color: colors.texto.primario,
   },
 
   inputContainer: {
@@ -235,7 +223,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderColor: colors.bordes.primario, // (#d1d5db)
+    borderColor: colors.bordes.primario,
   },
 
   input: {
@@ -245,7 +233,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#F9FAFB", // Un gris muy sutil para el input (hardcoded standard)
+    backgroundColor: "#F9FAFB",
     fontSize: 16,
     marginRight: 10,
     color: colors.texto.primario,
