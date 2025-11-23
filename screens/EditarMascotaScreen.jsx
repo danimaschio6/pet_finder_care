@@ -125,7 +125,7 @@ const EditarMascotaScreen = ({ route, navigation }) => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await deletePet(pet.id); // ⭐ Usa el SERVICE
+            await deletePet(pet.id);
 
             Alert.alert('Listo', 'Mascota eliminada correctamente.', [
               { text: 'OK', onPress: () => navigation.navigate('MisMascotas') },
@@ -152,8 +152,11 @@ const EditarMascotaScreen = ({ route, navigation }) => {
         nombre: values.nombre.trim(),
         especie: values.especie.trim(),
         raza: values.raza?.trim() || null,
-        edad_numero: values.edad_numero || null,
-        edad_unidad: values.edad_unidad || null,
+
+        // 🔥 FIX APLICADO AQUÍ
+        edad_numero: values.edad_numero === "" ? null : Number(values.edad_numero),
+        edad_unidad: values.edad_unidad === "" ? null : values.edad_unidad,
+
         pelaje: values.pelaje?.trim() || null,
         sexo: values.sexo || null,
         estado_reproductivo: values.estado_reproductivo?.trim() || null,
@@ -182,7 +185,6 @@ const EditarMascotaScreen = ({ route, navigation }) => {
 
         <Text style={styles.headerTitle}>Editar Mascota</Text>
 
-        {/* TACHO */}
         <TouchableOpacity onPress={handleDelete}>
           <MaterialIcons name="delete" size={24} color={colors.estado.perdido.base} />
         </TouchableOpacity>

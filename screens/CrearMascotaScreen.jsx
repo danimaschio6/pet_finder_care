@@ -140,22 +140,24 @@ const CrearMascotaScreen = ({ navigation }) => {
       let fotoUrl = null;
       if (pickedImage) fotoUrl = await uploadImage(userId);
 
-      // --------📌 USO REAL DEL SERVICE createPet -----------
+      // --------📌 FIX APLICADO ACÁ --------
       const newPet = {
         user_id: userId,
         nombre: values.nombre.trim(),
         especie: values.especie.trim(),
         raza: values.raza?.trim() || null,
-        edad_numero: values.edad_numero || null,
-        edad_unidad: values.edad_unidad || null,
+        edad_numero:
+          values.edad_numero === "" ? null : Number(values.edad_numero),
+        edad_unidad:
+          values.edad_unidad === "" ? null : values.edad_unidad,
         pelaje: values.pelaje?.trim() || null,
         sexo: values.sexo || null,
         estado_reproductivo: values.estado_reproductivo?.trim() || null,
         foto_url: fotoUrl,
       };
+      // -------------------------------------
 
       await createPet(newPet);
-      // ------------------------------------------------------
 
       setUploading(false);
       resetForm();
@@ -263,23 +265,23 @@ const CrearMascotaScreen = ({ navigation }) => {
                 <TouchableOpacity
                   style={styles.chipContainer}
                   onPress={() => {
-                    const next = 
-                       values.edad_unidad === 'mes'
-                         ? 'año'
-                         : 'mes';
+                    const next =
+                      values.edad_unidad === 'mes'
+                        ? 'año'
+                        : 'mes';
 
-                  setFieldValue('edad_unidad', next);
-                }}
-              >
+                    setFieldValue('edad_unidad', next);
+                  }}
+                >
                   <Text style={styles.chipText}>
                     {values.edad_unidad === 'mes'
                       ? 'Mes(es)'
                       : values.edad_unidad === 'año'
-                      ? 'Año(s)'
-                      : 'Unidad'}
+                        ? 'Año(s)'
+                        : 'Unidad'}
                   </Text>
-               </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
+              </View>
 
               {/* PELAJE */}
               <Text style={styles.label}>Pelaje</Text>

@@ -24,7 +24,7 @@ export const getUserPets = async (userId) => {
 export const createPet = async (petData) => {
   const { data, error } = await supabase
     .from("user_pets")
-    .insert([petData])
+    .insert(petData)
     .select()
     .single();
 
