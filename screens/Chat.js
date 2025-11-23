@@ -15,11 +15,14 @@ import {
 } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
 
-export default function Chat({ navigation, route }) {
+export default function Chat({ navigation: navProp, route }) {
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = 68 + Math.max(insets.bottom, 8);
 
   const avatarUri =
     route?.params?.avatarUrl ||
@@ -32,6 +35,11 @@ export default function Chat({ navigation, route }) {
   ]);
 
   const [input, setInput] = useState("");
+
+  // Navegar a las pantallas del TabNavigator
+  const navigateToTab = (screenName) => {
+    navigation.navigate('Dashboard', { screen: screenName });
+  };
 
   const sendMessage = () => {
     if (input.trim().length === 0) return;
@@ -64,8 +72,8 @@ export default function Chat({ navigation, route }) {
       <StatusBar backgroundColor={colors.primarios.indigo} barStyle="light-content" />
 
       {/* HEADER */}
-      <View style={[styles.header, { marginTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: 16 }]}>
+        <TouchableOpacity onPress={() => navProp?.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color={colors.botones.textoPrimario} />
         </TouchableOpacity>
 
@@ -93,7 +101,10 @@ export default function Chat({ navigation, route }) {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           inverted
-          contentContainerStyle={styles.flatListContent}
+          contentContainerStyle={[
+            styles.flatListContent,
+            { paddingBottom: tabBarHeight + 80 }
+          ]}
           showsVerticalScrollIndicator={false}
         />
 
@@ -101,7 +112,10 @@ export default function Chat({ navigation, route }) {
         <View
           style={[
             styles.inputContainer,
-            { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
+            { 
+              paddingBottom: Math.max(insets.bottom, 12),
+              marginBottom: tabBarHeight 
+            },
           ]}
         >
           <TextInput
@@ -120,6 +134,42 @@ export default function Chat({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Bottom Navigation Bar */}
+      <View style={[styles.bottomNav, { height: tabBarHeight, paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Inicio")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="home-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Inicio</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Buscar")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Buscar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Reportar")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add-circle-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Reportar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Perfil")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="person-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Perfil</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -134,12 +184,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.primarios.indigo,
-    paddingVertical: 15,
     paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     elevation: 4,
     shadowColor: colors.varios.sombra,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
+    shadowRadius: 8,
     zIndex: 10,
   },
 
@@ -246,5 +298,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    alignItems: "center",
+    backgroundColor: colors.fondo.componentes,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.bordes.primario,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 1000,
+  },
+  navButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  navText: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 6,
+    color: colors.texto.secundario,
   },
 });
