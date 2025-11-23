@@ -6,13 +6,15 @@ import colors from "../data/colors.json";
 import { useRoute, useNavigation } from "@react-navigation/native";
 
 interface IPet {
-  id: string
-  tipo: string
-  nombre: string
-  estado: string
-  descripcion: string
-  detalle: string
-  distancia: string
+    id: string
+    tipo: string
+    nombre: string
+    estado: string
+    descripcion: string
+    detalle: string
+    distancia: string
+    latitud?: number
+    longitud?: number
 }
 
 export default function NearbyPetDetailScreen() {
@@ -20,6 +22,11 @@ export default function NearbyPetDetailScreen() {
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
     const {mascota}= route.params as { mascota: any };
+    //const {mascota}= route.params as { mascota: IPet };
+
+    const coordenadas = mascota.latitud && mascota.longitud 
+    ? { lat: mascota.latitud, long: mascota.longitud } 
+    : undefined;
 
     return (
         <View style={styles.screen}>
@@ -69,6 +76,10 @@ export default function NearbyPetDetailScreen() {
                     <View style={styles.mockMapa}>
                         <Text style={ styles.textMapa }>Mapa</Text>
                     </View>
+                    {/*
+                    <PetMap {...coordenadas}
+                    />
+                    */}
                 </ScrollView>
                     
                 

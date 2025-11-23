@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import colors from "../data/colors.json";
 import PetCard from "./components//PetCardComponent";
 import { supabase } from "../supabase/client/supabaseClient";
+
+import LocationSelectMap from "./components/LocationSelectMap";
+import * as Location from "expo-location";
 
 interface IPet {
   id: string
@@ -26,55 +29,80 @@ export default function NearbyPetsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  {/*
-  const renderCard = ( {item} ) => {
-    const isPerdido = item.estado === 'Perdido';
-    return (
-      <View style={ styles.card }>
+  //estados mapa
+  const [userLocation, setUserLocation] = useState<{ lat: number, long: number } | null>(null);
+  const [modalMapaEleccionVisible, setModalMapaEleccionVisible] = useState(false);
+  //estados location
+  const [locationStatus, setLocationStatus] = useState<"granted" | "denied" | "unknown">("unknown");
+  
+  const getLocation = async () =>{
+    const location = await Location.getCurrentPositionAsync();
+    setUserLocation({
+      lat: location.coords.latitude,
+      long: location.coords.longitude,
+    });
+  }
+  const pedirPermisoLocation = async () => {
+    let {status, granted, canAskAgain} = await Location.requestForegroundPermissionsAsync();
+    //let {status, ios, android, expires, granted, canAskAgain} =
+    if (status!== 'granted') {
+      if (!canAskAgain) {
+        Alert.alert("Permiso denegado", "Es necesario que habilite el permiso en la configuración de su dispositivo.", 
+          [{
+            text: 'Cancelar',
+            onPress: ()=> console.log('Cancel Pressed'),
+            style: 'cancel',
+          },
+          {
+            text: 'OK',
+            onPress: ()=> console.log('Ok Pressed'),
+          },
+          ]
+        )
+        setLocationStatus("denied");
+        return;
+      }
 
-        <View style={[
-            styles.badge, 
-            {
-              backgroundColor: isPerdido ? colors.estado.perdido.fondo : colors.estado.encontrado.fondo ,
-            },
-        ]}>
-          <Text style={{ 
-            color: isPerdido ? colors.estado.perdido.base : colors.estado.encontrado.base, fontWeight: 'bold',
-          }}>
-            {item.tipo}
-          </Text>
-        </View>
-
-        <View style={{ flex: 1 }}>
-          <Text style={ styles.nombre }>
-            {item.nombre}{' '}
-            
-            <Text style={{
-                color: isPerdido ? colors.estado.perdido.base : colors.estado.encontrado.base,
-            }}>
-              ({item.estado})
-            </Text>
-
-          </Text>
-          <Text style={styles.descripcion}>{item.descripcion}</Text>
-          <Text style={styles.detalle}>📍 {item.detalle}</Text>
-          <Text style={styles.distancia}>{item.distancia}</Text>
-        </View>
-        <Text>ver</Text>
-      </View>
-    );
-  };
-  */}
+      Alert.alert("Permiso denegado", "Es necesario el permiso para acceder a su ubicación actual", [
+        {
+          text: 'Cancelar',
+          onPress: () => console.log('Cancel Pressed'),
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          //onPress: () => pedirPermisoLocation(),
+          onPress: () => setLocationStatus("denied"),
+        },
+      ])
+      return
+    } else if (granted) {
+      setLocationStatus("granted");
+      getLocation();
+    }
+  }
 
   // Cargar mascotas desde Supabase
+  {/* 
   useEffect(() => {
     loadPets();
   }, []);
-
+  */}
   // Recargar cuando cambie el filtro
+  {/** 
   useEffect(() => {
     loadPets();
   }, [filtroPerdidas, soloConFoto]);
+  */}
+
+  //permiso expo-location
+  useEffect(() => {
+    pedirPermisoLocation();
+  }, []);
+  // Cargar mascotas desde Supabase, recarga cuando cambien los filtros
+  useEffect(() => {
+    if (userLocation) loadPets();
+  }, [userLocation, filtroPerdidas, soloConFoto]);
 
   const loadPets = async () => {
     try {
@@ -116,6 +144,9 @@ export default function NearbyPetsScreen() {
         detalle: pet.location ? `📍 ${pet.location}` : '📍 Ubicación no especificada',
         distancia: 'Distancia no disponible', // Por ahora, se puede calcular después con geolocalización
         image_url: pet.image_url || null, // Incluir la URL de la imagen
+        //
+        //latitud: pet.latitude || null,
+        //longitud: pet.longitude || null,
       }));
 
       setPets(mappedPets);
@@ -250,8 +281,45 @@ export default function NearbyPetsScreen() {
           onChangeText={setSearchQuery}
           autoCorrect={false}
         />
+
+        { locationStatus === "denied" && (
+          <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
+            No diste permiso para usar la ubicación. Podés elegir una ubicación manualmente.
+          </Text>
+        ) }
+
+        {/* botón modal mapa */}
+        <TouchableOpacity 
+        style={{ 
+          backgroundColor: colors.primarios.indigo, 
+          padding: 12, 
+          borderRadius: 10, 
+          marginHorizontal: 12,
+          marginBottom: 10,
+          marginTop: 10 
+        }}
+        onPress={() => setModalMapaEleccionVisible(true)}
+        >
+          <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
+            Elegir ubicación manualmente
+          </Text>
+        </TouchableOpacity>
+
+        {/*modal mapa */}
+        <Modal visible={modalMapaEleccionVisible} animationType="slide">
+          <LocationSelectMap 
+          initialLat={userLocation?.lat}
+          initialLng={userLocation?.long}
+          onLocationSelected={(lat, long) => {
+            setUserLocation({ lat, long });
+            setModalMapaEleccionVisible(false);
+          }}
+          onClose={() => setModalMapaEleccionVisible(false)}
+          />
+        </Modal>
         
         {/* Lista */}
+        {/* Render según ubicación */}
         {/*
         <FlatList
           data={data}
@@ -260,7 +328,26 @@ export default function NearbyPetsScreen() {
           contentContainerStyle={{ paddingBottom: 80 }}
         />
         */}
-        {isLoading ? (
+        {!userLocation ? (
+          <View style={{ paddingTop: 40, alignItems: "center" }}>
+            <Text style={{ color: colors.texto.secundario, fontSize: 16, marginBottom: 10 }}>
+              Defina una ubicación para ver mascotas cercanas.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setModalMapaEleccionVisible(true)}
+              style={{
+                backgroundColor: colors.primarios.indigo,
+                padding: 12,
+                borderRadius: 10,
+                width: "80%",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>Elegir ubicación</Text>
+            </TouchableOpacity>
+          </View>
+        ): isLoading ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
             <ActivityIndicator size="large" color={colors.primarios.indigo} />
             <Text style={{ marginTop: 10, color: colors.texto.secundario }}>Cargando mascotas...</Text>

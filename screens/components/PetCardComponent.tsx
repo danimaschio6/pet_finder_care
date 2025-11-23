@@ -12,6 +12,8 @@ interface IPet {
   detalle: string
   distancia: string
   image_url?: string
+  latitud?: number | null
+  longitud?: number | null
 }
 
 export default function PetCard(props: IPet) { 
