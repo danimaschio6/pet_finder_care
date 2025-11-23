@@ -2,32 +2,53 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../data/colors.json';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const ProfileScreen = ({ navigation, onLogout }) => {
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mi Perfil</Text>
+      {/* HEADER */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Text style={styles.title}>Mi Perfil</Text>
+      </View>
 
-      {/* Botón para navegar a Mis Mascotas */}
-      <TouchableOpacity
-        style={styles.profileButton}
-        onPress={() => navigation.navigate('MisMascotas')}
-      >
-        <MaterialCommunityIcons name="dog" size={24} color={colors.primarios.indigo} />
-        <Text style={styles.profileButtonText}>Mis Mascotas</Text>
-      </TouchableOpacity>
+      {/* CONTENT */}
+      <View style={styles.content}>
 
-      {/* Botón para cerrar sesión */}
-      <TouchableOpacity
-        style={[styles.profileButton, { marginTop: 20, backgroundColor: colors.botones.rojo }]}
-        onPress={() => onLogout()} // Llama a la función onLogout
-      >
-        <MaterialCommunityIcons name="logout" size={24} color="white" />
-        <Text style={[styles.profileButtonText, { color: 'white' }]}>Cerrar Sesión</Text>
-      </TouchableOpacity>
+        {/* Botón: Mis Mascotas */}
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => navigation.navigate('MisMascotas')}
+        >
+          <View style={styles.buttonContent}>
+            <MaterialCommunityIcons name="dog" size={24} color={colors.primarios.indigo} />
+            <Text style={styles.profileButtonText}>Mis Mascotas</Text>
+          </View>
+        </TouchableOpacity>
 
+        {/* Botón: Cerrar Sesión */}
+        <TouchableOpacity
+          style={[styles.profileButton, styles.logoutButton]}
+          onPress={onLogout}
+          activeOpacity={0.7}
+        >
+          <View style={styles.buttonContent}>
+            <MaterialCommunityIcons
+              name="logout"
+              size={24}
+              color={colors.estado.perdido.base}
+            />
+            <Text style={[styles.profileButtonText, styles.logoutButtonText]}>
+              Cerrar Sesión
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+      </View>
     </View>
   );
 };
@@ -35,32 +56,62 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: colors.fondo.app,
-    padding: 20,
+  },
+  header: {
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: colors.primarios.indigo,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 40,
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.botones.textoPrimario,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  content: {
+    flex: 1,
+    paddingTop: 24,
+    paddingHorizontal: 20,
   },
   profileButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '80%',
-    padding: 15,
-    borderRadius: 10,
-    backgroundColor: colors.botones.secundario,
-    borderWidth: 1,
+    justifyContent: 'flex-start',
+    width: '100%',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: colors.fondo.componentes,
+    borderWidth: 0.5,
     borderColor: colors.bordes.primario,
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileButtonText: {
-    fontSize: 18,
-    marginLeft: 10,
+    fontSize: 17,
+    marginLeft: 12,
     color: colors.texto.primario,
+    fontWeight: '400',
+  },
+  logoutButton: {
+    marginTop: 20,
+    borderColor: colors.estado.perdido.base,
+  },
+  logoutButtonText: {
+    color: colors.estado.perdido.base,
+    fontWeight: '600',
   },
 });
 

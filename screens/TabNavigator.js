@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AntDesign, Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import colors from '../data/colors.json';
 import ReportPetScreen from './ReportPetScreen';
@@ -28,41 +29,60 @@ function NearbyPetsStack() {
 }
 
 const TabNavigator = ({ onLogout }) => {
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = 68 + Math.max(insets.bottom, 8);
+  
   return (
     <Tab.Navigator
       initialRouteName="Inicio"
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size, focused }) => {
           let iconName;
           let IconComponent;
           if (route.name === 'Inicio') {
-            iconName = 'home-outline';
+            iconName = focused ? 'home' : 'home-outline';
             IconComponent = Ionicons;
           } else if (route.name === 'Buscar') {
-            iconName = 'search1';
-            IconComponent = AntDesign;
+            iconName = focused ? 'search' : 'search-outline';
+            IconComponent = Ionicons;
           } else if (route.name === 'Reportar') {
-            iconName = 'receipt-outline';
+            iconName = focused ? 'add-circle' : 'add-circle-outline';
             IconComponent = Ionicons;
           } else if (route.name === 'Perfil') {
-            iconName = 'user-alt';
-            IconComponent = FontAwesome5;
+            iconName = focused ? 'person' : 'person-outline';
+            IconComponent = Ionicons;
           }
-          return <IconComponent name={iconName} size={size} color={color} />;
+          return (
+            <IconComponent 
+              name={iconName} 
+              size={focused ? 28 : 26} 
+              color={color} 
+            />
+          );
         },
         tabBarActiveTintColor: colors.primarios.indigo,
-        tabBarInactiveTintColor: colors.secundarios.gris,
+        tabBarInactiveTintColor: colors.texto.secundario,
         tabBarStyle: {
           backgroundColor: colors.fondo.componentes,
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
+          borderTopWidth: 0.5,
+          borderTopColor: colors.bordes.primario,
+          height: tabBarHeight,
+          paddingBottom: Math.max(insets.bottom, 8),
+          paddingTop: 10,
           position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 70,
-          paddingBottom: 10,
-          marginBottom: 0,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 10,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginTop: 6,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
         headerShown: false,
       })}

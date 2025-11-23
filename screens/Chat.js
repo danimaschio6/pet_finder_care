@@ -13,15 +13,17 @@ import {
   Modal,
   Pressable,
 } from "react-native";
+
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-// Importamos tus colores reales
 import colors from "../data/colors.json";
 
-export default function Chat({ navigation, route }) {
+export default function Chat({ navigation: navProp, route }) {
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = 68 + Math.max(insets.bottom, 8);
 
-  // Avatar: Si viene por parámetro úsalo, si no, usa uno genérico
   const avatarUri =
     route?.params?.avatarUrl ||
     "https://cdn-icons-png.flaticon.com/512/616/616408.png";
@@ -34,6 +36,11 @@ export default function Chat({ navigation, route }) {
 
   const [input, setInput] = useState("");
 
+  // Navegar a las pantallas del TabNavigator
+  const navigateToTab = (screenName) => {
+    navigation.navigate('Dashboard', { screen: screenName });
+  };
+
   const sendMessage = () => {
     if (input.trim().length === 0) return;
 
@@ -43,7 +50,6 @@ export default function Chat({ navigation, route }) {
       from: "user",
     };
 
-    // Agregamos al final del array (la lista invertida se encarga del orden visual)
     setMessages([...messages, newMessage]);
     setInput("");
   };
@@ -63,57 +69,53 @@ export default function Chat({ navigation, route }) {
 
   return (
     <View style={styles.mainContainer}>
-      {/* Barra de estado con tu color primario */}
       <StatusBar backgroundColor={colors.primarios.indigo} barStyle="light-content" />
 
       {/* HEADER */}
-      <View style={[styles.header, { marginTop: insets.top }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
+      <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: 16 }]}>
+        <TouchableOpacity onPress={() => navProp?.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color={colors.botones.textoPrimario} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>Pet Finder 🐾</Text>
 
-        {/* Avatar Clickeable */}
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Image source={{ uri: avatarUri }} style={styles.avatar} />
         </TouchableOpacity>
       </View>
 
-      {/* MODAL DE ZOOM */}
+      {/* MODAL ZOOM */}
       <Modal visible={modalVisible} animationType="fade" transparent>
-        <Pressable
-          style={styles.modalBackground}
-          onPress={() => setModalVisible(false)}
-        >
+        <Pressable style={styles.modalBackground} onPress={() => setModalVisible(false)}>
           <Image source={{ uri: avatarUri }} style={styles.modalImage} />
         </Pressable>
       </Modal>
 
-      {/* CUERPO DEL CHAT */}
+      {/* CHAT */}
       <KeyboardAvoidingView
         style={styles.container}
-        // Android maneja el teclado nativamente mejor con undefined si tienes adjustResize en app.json
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <FlatList
-          data={[...messages].reverse()} // Invertimos los datos para la lista
+          data={[...messages].reverse()}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          inverted // La lista crece desde abajo
-          contentContainerStyle={styles.flatListContent}
+          inverted
+          contentContainerStyle={[
+            styles.flatListContent,
+            { paddingBottom: tabBarHeight + 80 }
+          ]}
           showsVerticalScrollIndicator={false}
         />
 
-        {/* INPUT BAR */}
+        {/* INPUT */}
         <View
           style={[
             styles.inputContainer,
-            // Padding dinámico para iPhones sin botón home o Androids con gestos
-            { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
+            { 
+              paddingBottom: Math.max(insets.bottom, 12),
+              marginBottom: tabBarHeight 
+            },
           ]}
         >
           <TextInput
@@ -132,28 +134,64 @@ export default function Chat({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Bottom Navigation Bar */}
+      <View style={[styles.bottomNav, { height: tabBarHeight, paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Inicio")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="home-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Inicio</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Buscar")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Buscar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Reportar")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add-circle-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Reportar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => navigateToTab("Perfil")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="person-outline" size={26} color={colors.texto.secundario} />
+          <Text style={styles.navText}>Perfil</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
-// 🎨 ESTILOS BASADOS EN TU colors.json
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    // Usamos el fondo de componentes (blanco) para el chat para que sea limpio
     backgroundColor: colors.fondo.componentes,
   },
 
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.primarios.indigo, // Tu color principal (#6366f1)
-    paddingVertical: 15,
+    backgroundColor: colors.primarios.indigo,
     paddingHorizontal: 16,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
     elevation: 4,
     shadowColor: colors.varios.sombra,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
+    shadowRadius: 8,
     zIndex: 10,
   },
 
@@ -164,7 +202,7 @@ const styles = StyleSheet.create({
 
   headerTitle: {
     flex: 1,
-    color: colors.botones.textoPrimario, // Blanco
+    color: colors.botones.textoPrimario,
     fontWeight: "bold",
     fontSize: 20,
   },
@@ -176,13 +214,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fondo.componentes,
   },
 
-  /* MODAL */
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
+
   modalImage: {
     width: "85%",
     height: "45%",
@@ -192,6 +230,7 @@ const styles = StyleSheet.create({
 
   container: {
     flex: 1,
+    backgroundColor: colors.fondo.app,
   },
 
   flatListContent: {
@@ -208,24 +247,25 @@ const styles = StyleSheet.create({
   },
 
   userMessage: {
-    backgroundColor: colors.primarios.indigo, // Mensaje enviado (Indigo)
+    backgroundColor: colors.primarios.indigo,
     alignSelf: "flex-end",
     borderBottomRightRadius: 2,
   },
 
   systemMessage: {
-    backgroundColor: colors.fondo.app, // Mensaje recibido (Indigo muy claro #e0e7ff)
+    backgroundColor: colors.fondo.app,
     alignSelf: "flex-start",
     borderBottomLeftRadius: 2,
   },
 
   userText: {
     fontSize: 16,
-    color: colors.botones.textoPrimario, // Blanco
+    color: colors.botones.textoPrimario,
   },
+
   systemText: {
     fontSize: 16,
-    color: colors.texto.primario, // Gris oscuro (#374151)
+    color: colors.texto.primario,
   },
 
   inputContainer: {
@@ -235,7 +275,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderColor: colors.bordes.primario, // (#d1d5db)
+    borderColor: colors.bordes.primario,
   },
 
   input: {
@@ -245,7 +285,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 16,
-    backgroundColor: "#F9FAFB", // Un gris muy sutil para el input (hardcoded standard)
+    backgroundColor: "#F9FAFB",
     fontSize: 16,
     marginRight: 10,
     color: colors.texto.primario,
@@ -258,5 +298,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  bottomNav: {
+    flexDirection: "row",
+    justifyContent: "space-evenly",
+    alignItems: "center",
+    backgroundColor: colors.fondo.componentes,
+    borderTopWidth: 0.5,
+    borderTopColor: colors.bordes.primario,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 1000,
+  },
+  navButton: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  navText: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 6,
+    color: colors.texto.secundario,
   },
 });
