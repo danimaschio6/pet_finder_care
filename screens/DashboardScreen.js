@@ -77,7 +77,7 @@ const handleComingSoon = () => {
             <AntDesign name="pluscircle" size={24} color="#4A90E2" />
             <Text style={styles.quickAccessText}>Reportar Mascota</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#E6FFF2' }]} onPress={() => navigation.navigate('misMascotas')}>
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#E6FFF2' }]} onPress={() => navigation.getParent()?.navigate('MisMascotas')}>
             <MaterialCommunityIcons name="dog-side" size={24} color="#50E3C2" />
             <Text style={styles.quickAccessText}>Mis Mascotas</Text>
           </TouchableOpacity>

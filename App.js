@@ -10,7 +10,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import CompleteProfileScreen from './screens/CompleteProfileScreen';
 import TabNavigator from './screens/TabNavigator';
-import MisMascotasScreen from './screens/MisMascostasScreen';
+import MisMascotasScreen from './screens/MisMascotasScreen';
 import CrearMascotaScreen from './screens/CrearMascotaScreen';
 import VerMascotaScreen from './screens/VerMascotaScreen';
 import EditarMascotaScreen from './screens/EditarMascotaScreen'; 

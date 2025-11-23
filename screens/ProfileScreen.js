@@ -13,7 +13,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
       {/* Botón para navegar a Mis Mascotas */}
       <TouchableOpacity
         style={styles.profileButton}
-        onPress={() => navigation.navigate('misMascotas')}
+        onPress={() => navigation.navigate('MisMascotas')}
       >
         <MaterialCommunityIcons name="dog" size={24} color={colors.primarios.indigo} />
         <Text style={styles.profileButtonText}>Mis Mascotas</Text>

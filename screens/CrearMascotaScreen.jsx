@@ -21,7 +21,7 @@ import colors from '../data/colors.json';
 import { supabase } from '../supabase/client/supabaseClient';
 
 // 🔥 SERVICES
-import { createPet } from '../services/userPetsService';
+import { createPet } from '../supabase/services/userPetsService';
 
 // --------------------------------------------------------
 // VALIDACIÓN FORM
