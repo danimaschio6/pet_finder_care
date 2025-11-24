@@ -14,9 +14,6 @@ import {
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-import { decode as atob } from "base64-js";
-
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { Ionicons } from "@expo/vector-icons";
@@ -50,29 +47,33 @@ const CrearMascotaScreen = ({ navigation }) => {
   const [pickedImage, setPickedImage] = useState(null);
 
   // --------------------------------------------------------------
-  // ELEGIR IMAGEN
+  // ELEGIR IMAGEN (compatible con Expo Go)
   // --------------------------------------------------------------
   const handlePickImage = async () => {
     try {
       const { status } =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
+
       if (status !== "granted") {
         Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        mediaTypes: ImagePicker.MediaTypeOptions.Images, // 👈 AQUÍ EL CAMBIO
+        allowsEditing: false,
+        quality: 0.9,
       });
 
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        setPickedImage({
-          uri: asset.uri,
-          fileName: asset.fileName || `photo-${Date.now()}.jpg`,
-        });
-      }
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+
+      setPickedImage({
+        uri: asset.uri,
+        mimeType: asset.mimeType ?? "image/jpeg",
+        extension: (asset.mimeType ?? "image/jpeg").split("/")[1],
+      });
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "No se pudo seleccionar la imagen.");
@@ -80,7 +81,7 @@ const CrearMascotaScreen = ({ navigation }) => {
   };
 
   // --------------------------------------------------------------
-  // SUBIR IMAGEN A SUPABASE STORAGE — versión FIJA para Android/iOS
+  // SUBIR IMAGEN a Supabase Storage (usando fetch → Blob)
   // --------------------------------------------------------------
   const uploadImage = async (userId) => {
     if (!pickedImage) return null;
@@ -88,23 +89,21 @@ const CrearMascotaScreen = ({ navigation }) => {
     try {
       setUploading(true);
 
-      const base64 = await FileSystem.readAsStringAsync(pickedImage.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const filePath = `${userId}/${Date.now()}.${pickedImage.extension}`;
 
-      const fileBytes = atob(base64);
-      const extension = pickedImage.fileName.split(".").pop();
-      const filePath = `${userId}/${Date.now()}.${extension}`;
+      // fetch convierte la URI local en un Blob compatible
+      const response = await fetch(pickedImage.uri);
+      const blob = await response.blob();
 
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from("user_pets")
-        .upload(filePath, fileBytes, {
-          contentType: "image/jpeg",
+        .upload(filePath, blob, {
+          contentType: pickedImage.mimeType,
           upsert: false,
         });
 
-      if (uploadError) {
-        console.error(uploadError);
+      if (error) {
+        console.error(error);
         Alert.alert("Error", "No se pudo subir la imagen.");
         return null;
       }
@@ -113,7 +112,7 @@ const CrearMascotaScreen = ({ navigation }) => {
         .from("user_pets")
         .getPublicUrl(filePath);
 
-      return data.publicUrl;
+      return data.publicUrl; // URL pública que se guarda en foto_url
     } catch (err) {
       console.error(err);
       return null;
@@ -131,10 +130,9 @@ const CrearMascotaScreen = ({ navigation }) => {
 
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
+      if (!user) {
         Alert.alert("Error", "No se pudo obtener el usuario.");
         return;
       }
@@ -144,7 +142,6 @@ const CrearMascotaScreen = ({ navigation }) => {
       let fotoUrl = null;
       if (pickedImage) fotoUrl = await uploadImage(userId);
 
-      // Payload compatible con tu esquema exacto
       const newPet = {
         user_id: userId,
         nombre: values.nombre.trim(),
@@ -156,7 +153,7 @@ const CrearMascotaScreen = ({ navigation }) => {
         pelaje: values.pelaje?.trim() || null,
         sexo: values.sexo,
         estado_reproductivo: values.estado_reproductivo,
-        foto_url: fotoUrl,
+        foto_url: fotoUrl, // solo la URL, tal como define tu tabla
       };
 
       await createPet(newPet);
@@ -245,10 +242,8 @@ const CrearMascotaScreen = ({ navigation }) => {
               <Text style={styles.label}>Nombre*</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ej: Max"
                 value={values.nombre}
                 onChangeText={handleChange("nombre")}
-                onBlur={handleBlur("nombre")}
               />
               {touched.nombre && errors.nombre && (
                 <Text style={styles.errorText}>{errors.nombre}</Text>
@@ -258,14 +253,22 @@ const CrearMascotaScreen = ({ navigation }) => {
               <Text style={styles.label}>Especie*</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Perro, Gato..."
                 value={values.especie}
                 onChangeText={handleChange("especie")}
-                onBlur={handleBlur("especie")}
+                placeholder="Perro, Gato..."
               />
               {touched.especie && errors.especie && (
                 <Text style={styles.errorText}>{errors.especie}</Text>
               )}
+
+              {/* RAZA */}
+              <Text style={styles.label}>Raza</Text>
+              <TextInput
+                style={styles.input}
+                value={values.raza}
+                onChangeText={handleChange("raza")}
+                placeholder="Ej: Labrador, Mestizo..."
+              />
 
               {/* EDAD */}
               <Text style={styles.label}>Edad*</Text>
@@ -364,7 +367,9 @@ const CrearMascotaScreen = ({ navigation }) => {
                     values.estado_reproductivo === "castrado" &&
                       styles.chipSelected,
                   ]}
-                  onPress={() => setFieldValue("estado_reproductivo", "castrado")}
+                  onPress={() =>
+                    setFieldValue("estado_reproductivo", "castrado")
+                  }
                 >
                   <Text
                     style={[
@@ -383,7 +388,9 @@ const CrearMascotaScreen = ({ navigation }) => {
                     values.estado_reproductivo === "entero" &&
                       styles.chipSelected,
                   ]}
-                  onPress={() => setFieldValue("estado_reproductivo", "entero")}
+                  onPress={() =>
+                    setFieldValue("estado_reproductivo", "entero")
+                  }
                 >
                   <Text
                     style={[
@@ -541,11 +548,5 @@ const styles = StyleSheet.create({
     color: colors.botones.textoPrimario,
     fontSize: 16,
     fontWeight: "bold",
-  },
-  errorText: {
-    color: colors.estado.perdido.base,
-    fontSize: 12,
-    marginTop: -4,
-    marginBottom: 4,
   },
 });

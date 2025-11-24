@@ -4,6 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './supabase/client/supabaseClient';
+import * as Notifications from "expo-notifications";
+
+// 🔔 CONFIG GLOBAL DE NOTIFICACIONES
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 // Importa todas las pantallas
 import LoginScreen from './screens/LoginScreen';
