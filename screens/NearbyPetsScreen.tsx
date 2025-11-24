@@ -17,6 +17,8 @@ interface IPet {
   descripcion: string
   detalle: string
   distancia: string
+  latitud?: number
+  longitud?: number
 }
 
 export default function NearbyPetsScreen() {
