@@ -12,7 +12,8 @@ import {
   StatusBar,
   Modal,
   Pressable,
-  ActivityIndicator
+  ActivityIndicator,
+  Alert
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,38 +23,45 @@ import { supabase } from "../supabase/client/supabaseClient"; // Cliente Supabas
 export default function Chat({ navigation, route }) {
   const insets = useSafeAreaInsets();
 
-  // 1. RECIBIR PARÁMETROS (Dueño y Mascota)
+  //parametro (dueño y mascota)
   const { ownerId, petName, avatarUrl } = route.params || {};
 
   const avatarUri = avatarUrl || "https://cdn-icons-png.flaticon.com/512/616/616408.png";
   const chatTitle = petName ? `Consulta sobre ${petName}` : "Chat Pet Finder";
 
-  // Estados
+  // estados
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Referencias para no perder valores entre renderizados
+  // referencias para no perder valores entre renderizados
   const currentUserRef = useRef(null);
   const conversationIdRef = useRef(null);
 
-  // --- 2. INICIALIZAR CHAT (Buscar usuario y conversación) ---
+  //INICIAR CHAT (buscar usuario y la conversacion)
   useEffect(() => {
     const initChat = async () => {
       try {
-        // A. Obtener mi usuario actual
+        // Si no tiene ownerId ,para todo para evitar error en la BD
+        if (!ownerId) {
+          console.error("Error crítico: Intentando abrir chat sin ID de dueño (ownerId es null/undefined)");
+          Alert.alert("Error", "No se pudo identificar al dueño de esta mascota.");
+          setLoading(false);
+          return;
+        }
+        //Obtener mi usuario actual
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return; // Si no hay usuario logueado, no carga nada
         currentUserRef.current = user.id;
 
-        // B. Buscar si ya existe una conversación entre YO y el DUEÑO
-        // La query busca: (user_1 = YO y user_2 = DUEÑO) O (user_1 = DUEÑO y user_2 = YO)
+        //Buscar si ya existe una conversación entre YO y el DUEÑO
+        //La query busca: (user_1 = YO y user_2 = DUEÑO) O (user_1 = DUEÑO y user_2 = YO)
         const { data: existingConv, error } = await supabase
           .from('conversations')
           .select('id')
           .or(`and(user_1.eq.${user.id},user_2.eq.${ownerId}),and(user_1.eq.${ownerId},user_2.eq.${user.id})`)
-          .maybeSingle(); // Usamos maybeSingle para que no de error si no existe
+          .maybeSingle(); // el maybeSingle para que no de error si no existe
 
         if (existingConv) {
           // Si ya hablaron antes, cargamos el ID y los mensajes
@@ -61,7 +69,7 @@ export default function Chat({ navigation, route }) {
           await loadMessages(existingConv.id);
           subscribeToMessages(existingConv.id);
         } else {
-          // Si es chat nuevo, dejamos de cargar (se creará al enviar el primer mensaje)
+          // Si es chat nuevo, dejamos de cargar (se creara al enviar el primer mensaje)
           setLoading(false);
         }
       } catch (err) {
@@ -72,19 +80,19 @@ export default function Chat({ navigation, route }) {
 
     initChat();
 
-    // Limpieza al salir de la pantalla
+    //limpieza al salir de la pantalla
     return () => {
       supabase.removeAllChannels();
     };
   }, [ownerId]);
 
-  // --- 3. CARGAR MENSAJES VIEJOS ---
+  //cargar los mensajes viejos
   const loadMessages = async (convId) => {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', convId)
-      .order('created_at', { ascending: false }); // Orden DESC para la lista invertida
+      .order('created_at', { ascending: false });     // Orden DESC para la lista
 
     if (!error && data) {
       setMessages(data);
@@ -92,7 +100,7 @@ export default function Chat({ navigation, route }) {
     setLoading(false);
   };
 
-  // --- 4. SUSCRIPCIÓN REALTIME ---
+  //SUSCRIPCIÓN REALTIME
   const subscribeToMessages = (convId) => {
     supabase
       .channel(`chat:${convId}`)
@@ -109,17 +117,23 @@ export default function Chat({ navigation, route }) {
       .subscribe();
   };
 
-  // --- 5. ENVIAR MENSAJE ---
+  //ENVIAR MENSAJE
   const sendMessage = async () => {
     if (input.trim().length === 0) return;
 
+    // Seguridad extra. Si no hay ownerId, alertamos.
+    if (!ownerId) {
+      Alert.alert("Error", "No se puede enviar el mensaje porque falta el destinatario.");
+      return;
+    }
+
     const textToSend = input;
-    setInput(""); // Limpiar input visualmente rápido
+    setInput(""); //limpiar input visualmente rapido
 
     try {
       let convId = conversationIdRef.current;
 
-      // Si no existe conversación, la creamos ahora (Primera vez)
+      //si no existe conversacion, la creamos(primera vez)
       if (!convId) {
         const { data: newConv, error: createError } = await supabase
           .from('conversations')
@@ -133,10 +147,10 @@ export default function Chat({ navigation, route }) {
 
         convId = newConv.id;
         conversationIdRef.current = convId;
-        subscribeToMessages(convId); // Nos suscribimos a la nueva sala
+        subscribeToMessages(convId); //nos suscribimos a la nueva sala
       }
 
-      // Insertar mensaje en la base de datos
+      //insertar mensaje en la base de datos
       const { data: msgData, error: msgError } = await supabase
         .from('messages')
         .insert([
@@ -151,16 +165,16 @@ export default function Chat({ navigation, route }) {
 
       if (msgError) throw msgError;
 
-      // Agregamos a la lista local
+      // agregamos a la lista local
       setMessages((prev) => [msgData, ...prev]);
 
     } catch (err) {
       console.error("Error enviando mensaje:", err);
-      alert("Error al enviar mensaje. Intenta de nuevo.");
+      Alert.alert("Error", "Hubo un problema al enviar el mensaje.");
     }
   };
 
-  // Renderizado de cada burbuja
+  // renderizado de cada burbuja
   const renderItem = ({ item }) => {
     // Verificamos si el mensaje es mío comparando IDs
     const isMyMessage = item.sender_id === currentUserRef.current;
@@ -245,9 +259,15 @@ export default function Chat({ navigation, route }) {
             onSubmitEditing={sendMessage}
             returnKeyType="send"
             blurOnSubmit={false}
+            // Deshabilitamos el input si no hay ownerId para evitar intentos de envío
+            editable={!!ownerId}
           />
 
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <TouchableOpacity
+            style={[styles.sendButton, !ownerId && { backgroundColor: '#ccc' }]}
+            onPress={sendMessage}
+            disabled={!ownerId}
+          >
             <Ionicons name="send" size={20} color={colors.botones.textoPrimario} />
           </TouchableOpacity>
         </View>
@@ -256,7 +276,7 @@ export default function Chat({ navigation, route }) {
   );
 }
 
-// 🎨 ESTILOS (Sin cambios, tal cual los pasaste)
+//    ESTILOS
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,

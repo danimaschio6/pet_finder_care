@@ -20,7 +20,7 @@ interface IPet {
 export default function NearbyPetDetailScreen() {
     const route = useRoute();
 
-    // CORRECCIÓN AQUÍ: Agregamos <any> para evitar el error de TypeScript
+    //<any> para evitar el error de TypeScript
     const navigation = useNavigation<any>();
 
     const { mascota } = route.params as { mascota: any };

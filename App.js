@@ -11,7 +11,9 @@ import RegisterScreen from './screens/RegisterScreen';
 import CompleteProfileScreen from './screens/CompleteProfileScreen';
 import TabNavigator from './screens/TabNavigator';
 import misMascotasScreen from './screens/misMascotasScreen';
+import InboxScreen from './screens/InboxScreen';
 import Chat from './screens/Chat';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -22,7 +24,7 @@ const App = () => {
   // Verificar sesión al iniciar la app
   useEffect(() => {
     checkSession();
-    
+
     // Escuchar cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
@@ -92,8 +94,9 @@ const App = () => {
             <Stack.Screen name="Dashboard">
               {props => <TabNavigator {...props} onLogout={handleLogout} />}
             </Stack.Screen>
-            
+
             <Stack.Screen name="misMascotas" component={misMascotasScreen} />
+            <Stack.Screen name="BandejaEntrada" component={InboxScreen} />
             <Stack.Screen name="Mensajes" component={Chat} />
           </>
         ) : (

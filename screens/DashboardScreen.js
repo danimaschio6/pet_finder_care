@@ -35,8 +35,8 @@ const PetCard = ({ pet }) => (
 const DashboardScreen = ({ onLogout }) => {
   const navigation = useNavigation();
 
-const handleComingSoon = () => {
-  Alert.alert('Función en Desarrollo', 'Esta función se implementará pronto. ¡Gracias por tu paciencia!');
+  const handleComingSoon = () => {
+    Alert.alert('Función en Desarrollo', 'Esta función se implementará pronto. ¡Gracias por tu paciencia!');
   };
 
 
@@ -85,7 +85,7 @@ const handleComingSoon = () => {
             <MaterialCommunityIcons name="map-marker-radius" size={24} color="#BD10E0" />
             <Text style={styles.quickAccessText}>Refugios Cercanos</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#FFFEE6' }]} onPress={() => navigation.navigate('Mensajes')}>
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#FFFEE6' }]} onPress={() => navigation.navigate('BandejaEntrada')}>
             <Ionicons name="chatbubble-ellipses-outline" size={24} color="#F8E71C" />
             <Text style={styles.quickAccessText}>Mensajes</Text>
           </TouchableOpacity>
