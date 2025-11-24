@@ -107,6 +107,9 @@ const App = () => {
               <Stack.Screen name="CrearMascota" component={CrearMascotaScreen} />
               <Stack.Screen name="VerMascota" component={VerMascotaScreen} />
               <Stack.Screen name="EditarMascota" component={EditarMascotaScreen} />
+              <Stack.Screen name="VerHistorial" component={VerHistorialScreen} />
+              <Stack.Screen name="AgregarHistorial" component={AgregarHistorialScreen} />
+              <Stack.Screen name="EditarHistorial" component={EditarHistorialScreen} />
               <Stack.Screen name="Mensajes" component={Chat} />
             </>
           ) : (
