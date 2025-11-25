@@ -84,6 +84,20 @@ export default function NearbyPetsScreen() {
     }
   }
 
+  function calcularDistanciaKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const radio = 6371; //Km de radio de la tierra
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return radio * c;
+  }
   // Cargar mascotas desde Supabase
   {/* 
   useEffect(() => {
@@ -112,20 +126,20 @@ export default function NearbyPetsScreen() {
       
       // Construir la query base
       let query = supabase
-        .from('pets')
-        .select('id, name, species, breed, description, location, image_url, status, created_at')
-        .order('created_at', { ascending: false });
+      .from('pets')
+      .select('id, name, species, breed, description, location, image_url, status, created_at, latitude, longitude')
+      .order('created_at', { ascending: false });
 
       // Filtrar por estado si no es "Todas"
       if (filtroPerdidas === "Perdidas") {
-        query = query.eq('status', 'perdida');
+        query= query.eq('status', 'perdida');
       } else if (filtroPerdidas === "Encontradas") {
-        query = query.eq('status', 'encontrada');
+        query= query.eq('status', 'encontrada');
       }
 
       // Filtrar solo con foto si está activado
       if (soloConFoto) {
-        query = query.not('image_url', 'is', null);
+        query= query.not('image_url', 'is', null);
       }
 
       const { data: petsData, error } = await query;
@@ -146,9 +160,9 @@ export default function NearbyPetsScreen() {
         detalle: pet.location ? `📍 ${pet.location}` : '📍 Ubicación no especificada',
         distancia: 'Distancia no disponible', // Por ahora, se puede calcular después con geolocalización
         image_url: pet.image_url || null, // Incluir la URL de la imagen
-        //
-        //latitud: pet.latitude || null,
-        //longitud: pet.longitude || null,
+        // coordenadas
+        latitud: pet.latitude,
+        longitud: pet.longitude,
       }));
 
       setPets(mappedPets);
@@ -161,7 +175,9 @@ export default function NearbyPetsScreen() {
   };
 
   // Filtrar por búsqueda
+  {/** 
   const mascotasFiltradas: IPet[] = pets.filter((item) => {
+
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -170,6 +186,47 @@ export default function NearbyPetsScreen() {
       item.tipo.toLowerCase().includes(query) ||
       item.detalle.toLowerCase().includes(query)
     );
+
+  });
+  */}
+  
+  // Filtrar búsqueda
+  const mascotasFiltradas: IPet[] = pets.filter((item) => {
+    // sin ubicacion de usuario no filtramos nada. No importan los demas filtros pq igual la lista no se muestra
+    if (!userLocation) return false;
+
+    // cálculo de distancia si la mascota tiene coordenadas
+    if (item.latitud && item.longitud) {
+      const dist = calcularDistanciaKm(
+        userLocation.lat,
+        userLocation.long,
+        item.latitud,
+        item.longitud
+      );
+
+      item.distancia = `${dist.toFixed(1)} km`;
+
+      // si está activado "menosDe5km"
+      //if (menosDe5km && dist > 5) return false;
+      
+      const distanciaMaxima = menosDe5km ? 5 : 10;
+      if (dist > distanciaMaxima) return false;
+    }
+
+    // luego filtro por búsqueda
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      if (
+        !item.nombre.toLowerCase().includes(q) &&
+        !item.descripcion.toLowerCase().includes(q) &&
+        !item.tipo.toLowerCase().includes(q) &&
+        !item.detalle.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   return (
@@ -237,16 +294,16 @@ export default function NearbyPetsScreen() {
             visible={!!modalFiltrosVisible}
             onRequestClose={() => setModalFiltrosVisible(false)}
           >
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>Opciones de Filtrado</Text>
+            <View style={ styles.modalOverlay }>
+              <View style={ styles.modalContent }>
+                <Text style={ styles.modalTitle }>Opciones de Filtrado</Text>
 
-                <View style={styles.switchRow}>
-                  <Text style={styles.switchLabel}>Solo con foto</Text>
+                <View style={ styles.switchRow }>
+                  <Text style={ styles.switchLabel }>Solo con foto</Text>
                   <Switch
-                    value={soloConFoto}
-                    onValueChange={setSoloConFoto}
-                    thumbColor={soloConFoto ? colors.primarios.indigo : "#f4f3f4"}
+                    value={ soloConFoto }
+                    onValueChange={ setSoloConFoto }
+                    thumbColor={ soloConFoto ? colors.primarios.indigo : "#f4f3f4" }
                     trackColor={{ false: "#d1d5db", true: colors.primarios.indigo }}
                   />
                 </View>
@@ -254,16 +311,16 @@ export default function NearbyPetsScreen() {
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>Menos de 5 km</Text>
                   <Switch
-                    value={menosDe5km}
-                    onValueChange={setMenosDe5km}
-                    thumbColor={menosDe5km ? colors.primarios.indigo : "#f4f3f4"}
+                    value={ menosDe5km }
+                    onValueChange={ setMenosDe5km }
+                    thumbColor={ menosDe5km ? colors.primarios.indigo : "#f4f3f4" }
                     trackColor={{ false: "#d1d5db", true: colors.primarios.indigo }}
                   />
                 </View>
 
-                <TouchableOpacity
-                  style={[styles.botonFiltro, { marginTop: 20 }]}
-                  onPress={() => setModalFiltrosVisible(false)}
+                <TouchableOpacity 
+                style={[styles.botonFiltro, { marginTop: 20 }]} 
+                onPress={() => setModalFiltrosVisible(false)}
                 >
                   <Text style={styles.filtroText}>Cerrar</Text>
                 </TouchableOpacity>
@@ -293,25 +350,29 @@ export default function NearbyPetsScreen() {
         {/* botón modal mapa */}
         <TouchableOpacity 
         style={{ 
-          backgroundColor: colors.primarios.indigo, 
-          padding: 12, 
-          borderRadius: 10, 
-          marginHorizontal: 12,
-          marginBottom: 10,
-          marginTop: 10 
+          flex: 1,
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          backgroundColor: colors.primarios.indigo,
         }}
-        onPress={() => setModalMapaEleccionVisible(true)}
+        onPress={ () => setModalMapaEleccionVisible(true) }
         >
+          
           <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
-            Elegir ubicación manualmente
+            <Ionicons name="map-outline" size={18} color= {colors.botones.secundario}/>
+            Definir ubicación
           </Text>
         </TouchableOpacity>
 
         {/*modal mapa */}
-        <Modal visible={modalMapaEleccionVisible} animationType="slide">
+        <Modal visible={ modalMapaEleccionVisible } animationType="slide">
           <LocationSelectMap 
-          initialLat={userLocation?.lat}
-          initialLng={userLocation?.long}
+          initialLat={ userLocation?.lat }
+          initialLng={ userLocation?.long }
           onLocationSelected={(lat, long) => {
             setUserLocation({ lat, long });
             setModalMapaEleccionVisible(false);

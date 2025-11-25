@@ -1,7 +1,7 @@
 import { View , Text, StyleSheet, TouchableOpacity, Image} from "react-native"
 import colors from "../../data/colors.json";
 
-import { useNavigation } from "@react-navigation/native";
+import { NavigationProp, useNavigation } from "@react-navigation/native";
 
 interface IPet {
   id: string
@@ -16,9 +16,13 @@ interface IPet {
   longitud?: number | null
 }
 
+type RootStackParamList = {
+  NearbyPetDetailScreen: { mascota: IPet };
+};
+
 export default function PetCard(props: IPet) { 
 
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   {/* */}
   const handleGoToPetDetail = () => {

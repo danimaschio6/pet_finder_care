@@ -2,14 +2,14 @@ import { Alert, StyleSheet, View , Text} from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 interface ICoords {
-  lat: number,
-  long: number
+  latitud?: number,
+  longitud?: number
 }
 
 export default function PetMap(props: ICoords) {
-    const { lat, long } = props;
+    const { latitud, longitud } = props;
     
-    if (!lat || !long) {
+    if (!latitud || !longitud) {
         return (
             <View style={styles.mockMapa}>
                 <Text style={styles.textMapa}>Ubicación no disponible</Text>
@@ -64,8 +64,8 @@ export default function PetMap(props: ICoords) {
     <MapView 
     style= { styles.map }
     initialRegion= {{
-        latitude: lat, 
-        longitude: long, 
+        latitude: latitud, 
+        longitude: longitud, 
         latitudeDelta: 0.01, 
         longitudeDelta: 0.01, 
     }} 
@@ -75,9 +75,9 @@ export default function PetMap(props: ICoords) {
     >
         <Marker 
         coordinate= {{ 
-            latitude: lat, 
-            longitude: long, 
-        }} 
+            latitude: latitud, 
+            longitude: longitud, 
+        }}
         />
         {/*
         <Marker 

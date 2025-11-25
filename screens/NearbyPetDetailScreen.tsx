@@ -4,7 +4,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import PetMap from "./components/PetMap";
 
+interface ICoords {
+  latitud: number,
+  longitud: number
+}
 interface IPet {
     id: string
     tipo: string
@@ -21,20 +26,21 @@ export default function NearbyPetDetailScreen() {
     const route = useRoute();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
-    const {mascota}= route.params as { mascota: any };
-    //const {mascota}= route.params as { mascota: IPet };
+    const { mascota }= route.params as { mascota: any };
+    //const { mascota }= route.params as { mascota: IPet };
 
-    const coordenadas = mascota.latitud && mascota.longitud 
-    ? { lat: mascota.latitud, long: mascota.longitud } 
-    : undefined;
+    const coordenadas: ICoords = {
+        latitud: mascota.latitud,
+        longitud: mascota.longitud,
+    };
 
     return (
         <View style={styles.screen}>
             <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
                 <TouchableOpacity 
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                    activeOpacity={0.7}
+                style={styles.backButton} 
+                onPress={() => navigation.goBack()} 
+                activeOpacity={0.7} 
                 >
                     <Ionicons name="chevron-back" size={28} color={colors.botones.textoPrimario} />
                 </TouchableOpacity>
@@ -73,13 +79,15 @@ export default function NearbyPetDetailScreen() {
                         <Text style={styles.label}>Distancia:</Text>
                         <Text style={styles.valor}>{mascota.distancia}</Text>
                     </View>
+
+                    {/* 
                     <View style={styles.mockMapa}>
                         <Text style={ styles.textMapa }>Mapa</Text>
                     </View>
-                    {/*
-                    <PetMap {...coordenadas}
-                    />
-                    */}
+                     */}
+                    
+                    <PetMap {...coordenadas} />
+                    
                 </ScrollView>
                     
                 

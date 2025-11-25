@@ -197,7 +197,7 @@ const LoginScreen = ({ onLogin, navigation }) => {
                   placeholder="Contraseña"
                   placeholderTextColor={colors.texto.secundario}
                   value={password}
-                  onChangeText={(text) => setPassword(text.toLowerCase())}
+                  onChangeText={(text) => setPassword(text)}
                   secureTextEntry={!showPassword}
                   autoComplete="password"
                   textContentType="password"
@@ -237,7 +237,7 @@ const LoginScreen = ({ onLogin, navigation }) => {
                     placeholder="Confirmar Contraseña"
                     placeholderTextColor={colors.texto.secundario}
                     value={confirmPassword}
-                    onChangeText={(text) => setConfirmPassword(text.toLowerCase())}
+                    onChangeText={(text) => setConfirmPassword(text)}
                     secureTextEntry={!showConfirmPassword}
                     autoComplete="password"
                     textContentType="password"
