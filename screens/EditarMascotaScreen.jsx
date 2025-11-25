@@ -14,11 +14,11 @@ import {
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
-import { decode as atob } from "base64-js";
+import { decode as atob } from "base-64"; // ✔ CORRECTO PARA SDK 54
 
 import { Formik } from "formik";
 import * as Yup from "yup";
+
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 import colors from "../data/colors.json";
@@ -28,23 +28,20 @@ import { supabase } from "../supabase/client/supabaseClient";
 import { updatePet, deletePet } from "../supabase/services/userPetsService";
 
 // --------------------------------------------------------------
-// VALIDACIÓN — alineada con CHECK constraints de Supabase
+// VALIDACIÓN
 // --------------------------------------------------------------
 const petSchema = Yup.object().shape({
   nombre: Yup.string().required("El nombre es obligatorio"),
   especie: Yup.string().required("La especie es obligatoria"),
   raza: Yup.string().nullable(),
   edad_numero: Yup.number()
-    .typeError("Debe ser un número")
     .nullable()
+    .typeError("Debe ser un número")
     .min(0, "No puede ser negativo"),
-  edad_unidad: Yup.string().oneOf(["mes", "año"], "Selecciona mes o año"),
+  edad_unidad: Yup.string().oneOf(["mes", "año"]),
   pelaje: Yup.string().nullable(),
-  sexo: Yup.string().oneOf(["macho", "hembra"], "Selecciona un sexo"),
-  estado_reproductivo: Yup.string().oneOf(
-    ["castrado", "entero"],
-    "Selecciona castrado o entero"
-  ),
+  sexo: Yup.string().oneOf(["macho", "hembra"]),
+  estado_reproductivo: Yup.string().oneOf(["castrado", "entero"]),
 });
 
 const EditarMascotaScreen = ({ route, navigation }) => {
@@ -54,29 +51,39 @@ const EditarMascotaScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
 
   // --------------------------------------------------------------
-  // ELEGIR IMAGEN
+  // PICKER IMAGEN SDK 54
   // --------------------------------------------------------------
   const handlePickImage = async () => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permiso requerido",
+          "Necesitamos acceso a tu galería para cambiar la foto."
+        );
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        mediaTypes: ["images"], // ✔ SDK 54
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+        base64: true, // ✔ NECESARIO PARA SUBIR A SUPABASE
       });
 
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        setPickedImage({
-          uri: asset.uri,
-          fileName: asset.fileName || `photo-${Date.now()}.jpg`,
-        });
-      }
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+      const mime = asset.mimeType ?? "image/jpeg";
+      const ext = mime.split("/")[1] ?? "jpg";
+
+      setPickedImage({
+        uri: asset.uri,
+        base64: asset.base64,
+        mimeType: mime,
+        extension: ext,
+      });
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "No se pudo seleccionar la imagen.");
@@ -84,42 +91,34 @@ const EditarMascotaScreen = ({ route, navigation }) => {
   };
 
   // --------------------------------------------------------------
-  // SUBIR IMAGEN — overwrite real en Supabase Storage
-  // Ruta: user_id/pet.id.extension
+  // SUBIR IMAGEN (REEMPLAZO REAL)
+  // Ruta: user_id / petId.extension
   // --------------------------------------------------------------
   const uploadImage = async () => {
-    // Si no se eligió nueva imagen, devolvemos la anterior
-    if (!pickedImage) return pet.foto_url;
+    if (!pickedImage?.base64) return pet.foto_url;
 
     try {
       setLoading(true);
 
-      // Leer archivo como base64
-      const base64 = await FileSystem.readAsStringAsync(pickedImage.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const filePath = `${pet.user_id}/${pet.id}.${pickedImage.extension}`;
 
-      // Convertir base64 -> bytes (Uint8Array compatible)
-      const binaryString = atob(base64);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+      // Convertir base64 → bytes (Uint8Array)
+      const binary = atob(pickedImage.base64);
+      const bytes = new Uint8Array(binary.length);
+
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
       }
 
-      const extension = pickedImage.fileName.split(".").pop();
-      const filePath = `${pet.user_id}/${pet.id}.${extension}`;
-
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from("user_pets")
         .upload(filePath, bytes, {
-          contentType: "image/jpeg",
-          upsert: true, // overwrite
+          contentType: pickedImage.mimeType,
+          upsert: true, // ✔ REEMPLAZA LA FOTO EXISTENTE
         });
 
-      if (uploadError) {
-        console.error(uploadError);
-        Alert.alert("Error", "No se pudo subir la imagen.");
+      if (error) {
+        console.error("Upload error:", error);
         return pet.foto_url;
       }
 
@@ -151,8 +150,11 @@ const EditarMascotaScreen = ({ route, navigation }) => {
           onPress: async () => {
             try {
               await deletePet(pet.id);
-              Alert.alert("Listo", "Mascota eliminada correctamente.", [
-                { text: "OK", onPress: () => navigation.navigate("MisMascotas") },
+              Alert.alert("Listo", "Mascota eliminada.", [
+                {
+                  text: "OK",
+                  onPress: () => navigation.navigate("MisMascotas"),
+                },
               ]);
             } catch (error) {
               console.error(error);
@@ -216,11 +218,10 @@ const EditarMascotaScreen = ({ route, navigation }) => {
 
         <Text style={styles.headerTitle}>Editar Mascota</Text>
 
-        {/* BOTÓN TACHO */}
         <TouchableOpacity onPress={handleDelete}>
           <MaterialIcons
             name="delete"
-            size={24}
+            size={26}
             color={colors.estado.perdido.base}
           />
         </TouchableOpacity>
@@ -284,9 +285,8 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                 style={styles.input}
                 value={values.nombre}
                 onChangeText={handleChange("nombre")}
-                onBlur={handleBlur("nombre")}
               />
-              {touched.nombre && errors.nombre && (
+              {errors.nombre && touched.nombre && (
                 <Text style={styles.errorText}>{errors.nombre}</Text>
               )}
 
@@ -296,10 +296,8 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                 style={styles.input}
                 value={values.especie}
                 onChangeText={handleChange("especie")}
-                onBlur={handleBlur("especie")}
-                placeholder="Perro, Gato..."
               />
-              {touched.especie && errors.especie && (
+              {errors.especie && touched.especie && (
                 <Text style={styles.errorText}>{errors.especie}</Text>
               )}
 
@@ -313,52 +311,49 @@ const EditarMascotaScreen = ({ route, navigation }) => {
 
               {/* EDAD */}
               <Text style={styles.label}>Edad*</Text>
-              <View style={styles.ageRow}>
+              <View style={styles.row}>
                 <TextInput
                   style={[styles.input, { flex: 1, marginRight: 10 }]}
-                  placeholder="Número"
                   keyboardType="numeric"
                   value={values.edad_numero}
                   onChangeText={handleChange("edad_numero")}
                 />
 
-                <View style={styles.row}>
-                  <TouchableOpacity
+                <TouchableOpacity
+                  style={[
+                    styles.chipSmall,
+                    values.edad_unidad === "mes" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("edad_unidad", "mes")}
+                >
+                  <Text
                     style={[
-                      styles.chipSmall,
-                      values.edad_unidad === "mes" && styles.chipSelected,
+                      styles.chipText,
+                      values.edad_unidad === "mes" &&
+                        styles.chipTextSelected,
                     ]}
-                    onPress={() => setFieldValue("edad_unidad", "mes")}
                   >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        values.edad_unidad === "mes" &&
-                          styles.chipTextSelected,
-                      ]}
-                    >
-                      Meses
-                    </Text>
-                  </TouchableOpacity>
+                    Meses
+                  </Text>
+                </TouchableOpacity>
 
-                  <TouchableOpacity
+                <TouchableOpacity
+                  style={[
+                    styles.chipSmall,
+                    values.edad_unidad === "año" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("edad_unidad", "año")}
+                >
+                  <Text
                     style={[
-                      styles.chipSmall,
-                      values.edad_unidad === "año" && styles.chipSelected,
+                      styles.chipText,
+                      values.edad_unidad === "año" &&
+                        styles.chipTextSelected,
                     ]}
-                    onPress={() => setFieldValue("edad_unidad", "año")}
                   >
-                    <Text
-                      style={[
-                        styles.chipText,
-                        values.edad_unidad === "año" &&
-                          styles.chipTextSelected,
-                      ]}
-                    >
-                      Años
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                    Años
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               {/* PELAJE */}
@@ -382,7 +377,8 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                   <Text
                     style={[
                       styles.chipText,
-                      values.sexo === "macho" && styles.chipTextSelected,
+                      values.sexo === "macho" &&
+                        styles.chipTextSelected,
                     ]}
                   >
                     Macho
@@ -399,7 +395,8 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                   <Text
                     style={[
                       styles.chipText,
-                      values.sexo === "hembra" && styles.chipTextSelected,
+                      values.sexo === "hembra" &&
+                        styles.chipTextSelected,
                     ]}
                   >
                     Hembra
@@ -453,16 +450,20 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                 </TouchableOpacity>
               </View>
 
-              {/* BOTÓN GUARDAR */}
+              {/* GUARDAR */}
               <TouchableOpacity
                 style={[styles.saveButton, loading && { opacity: 0.6 }]}
                 onPress={handleSubmit}
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={colors.botones.textoPrimario} />
+                  <ActivityIndicator
+                    color={colors.botones.textoPrimario}
+                  />
                 ) : (
-                  <Text style={styles.saveButtonText}>Guardar cambios</Text>
+                  <Text style={styles.saveButtonText}>
+                    Guardar cambios
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -472,8 +473,6 @@ const EditarMascotaScreen = ({ route, navigation }) => {
     </View>
   );
 };
-
-export default EditarMascotaScreen;
 
 // --------------------------------------------------------------
 // ESTILOS
@@ -497,18 +496,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
-  scrollContent: {
-    padding: 16,
-  },
+  scrollContent: { padding: 16 },
   card: {
     backgroundColor: colors.fondo.componentes,
     borderRadius: 16,
     padding: 16,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
   },
   photoContainer: {
     alignItems: "center",
@@ -523,7 +515,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 20,
-    backgroundColor: "#E5E7EB",
+    backgroundColor: "#EEE",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -534,19 +526,16 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 4,
-    color: colors.texto.primario,
-    marginTop: 8,
+    fontWeight: "bold",
+    marginTop: 10,
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.bordes.primario,
+    borderColor: "#DDD",
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    backgroundColor: "#F9FAFB",
+    padding: 10,
+    marginTop: 4,
+    backgroundColor: "#FAFAFA",
   },
   row: {
     flexDirection: "row",
@@ -554,25 +543,20 @@ const styles = StyleSheet.create({
     gap: 10,
     marginVertical: 6,
   },
-  ageRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
   chip: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.bordes.primario,
-    borderRadius: 50,
+    borderColor: "#AAA",
+    borderRadius: 20,
     paddingVertical: 8,
     alignItems: "center",
   },
   chipSmall: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 50,
     borderWidth: 1,
-    borderColor: colors.bordes.primario,
-    marginRight: 8,
+    borderColor: "#AAA",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   chipSelected: {
     backgroundColor: colors.primarios.indigo,
@@ -584,24 +568,25 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: "white",
-    fontWeight: "600",
+    fontWeight: "bold",
   },
   saveButton: {
-    marginTop: 20,
     backgroundColor: colors.botones.primario,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
+    marginTop: 20,
   },
   saveButtonText: {
-    color: colors.botones.textoPrimario,
+    color: "white",
     fontSize: 16,
     fontWeight: "bold",
   },
   errorText: {
     color: colors.estado.perdido.base,
     fontSize: 12,
-    marginTop: -4,
-    marginBottom: 4,
+    marginTop: 2,
   },
 });
+
+export default EditarMascotaScreen;
