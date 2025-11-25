@@ -14,11 +14,19 @@ import {
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
+<<<<<<< HEAD
 import * as FileSystem from "expo-file-system";
 import { decode as atob } from "base64-js";
 
 import { Formik } from "formik";
 import * as Yup from "yup";
+=======
+import { decode as atob } from "base-64"; // ✔ CORRECTO PARA SDK 54
+
+import { Formik } from "formik";
+import * as Yup from "yup";
+
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 import colors from "../data/colors.json";
@@ -28,13 +36,18 @@ import { supabase } from "../supabase/client/supabaseClient";
 import { updatePet, deletePet } from "../supabase/services/userPetsService";
 
 // --------------------------------------------------------------
+<<<<<<< HEAD
 // VALIDACIÓN — alineada con CHECK constraints de Supabase
+=======
+// VALIDACIÓN
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
 // --------------------------------------------------------------
 const petSchema = Yup.object().shape({
   nombre: Yup.string().required("El nombre es obligatorio"),
   especie: Yup.string().required("La especie es obligatoria"),
   raza: Yup.string().nullable(),
   edad_numero: Yup.number()
+<<<<<<< HEAD
     .typeError("Debe ser un número")
     .nullable()
     .min(0, "No puede ser negativo"),
@@ -45,6 +58,15 @@ const petSchema = Yup.object().shape({
     ["castrado", "entero"],
     "Selecciona castrado o entero"
   ),
+=======
+    .nullable()
+    .typeError("Debe ser un número")
+    .min(0, "No puede ser negativo"),
+  edad_unidad: Yup.string().oneOf(["mes", "año"]),
+  pelaje: Yup.string().nullable(),
+  sexo: Yup.string().oneOf(["macho", "hembra"]),
+  estado_reproductivo: Yup.string().oneOf(["castrado", "entero"]),
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
 });
 
 const EditarMascotaScreen = ({ route, navigation }) => {
@@ -54,6 +76,7 @@ const EditarMascotaScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
 
   // --------------------------------------------------------------
+<<<<<<< HEAD
   // ELEGIR IMAGEN
   // --------------------------------------------------------------
   const handlePickImage = async () => {
@@ -62,6 +85,18 @@ const EditarMascotaScreen = ({ route, navigation }) => {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+=======
+  // PICKER IMAGEN SDK 54
+  // --------------------------------------------------------------
+  const handlePickImage = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(
+          "Permiso requerido",
+          "Necesitamos acceso a tu galería para cambiar la foto."
+        );
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
         return;
       }
 
@@ -84,16 +119,25 @@ const EditarMascotaScreen = ({ route, navigation }) => {
   };
 
   // --------------------------------------------------------------
+<<<<<<< HEAD
   // SUBIR IMAGEN — overwrite real en Supabase Storage
   // Ruta: user_id/pet.id.extension
   // --------------------------------------------------------------
   const uploadImage = async () => {
     // Si no se eligió nueva imagen, devolvemos la anterior
     if (!pickedImage) return pet.foto_url;
+=======
+  // SUBIR IMAGEN (REEMPLAZO REAL)
+  // Ruta: user_id / petId.extension
+  // --------------------------------------------------------------
+  const uploadImage = async () => {
+    if (!pickedImage?.base64) return pet.foto_url;
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
 
     try {
       setLoading(true);
 
+<<<<<<< HEAD
       // Leer archivo como base64
       const base64 = await FileSystem.readAsStringAsync(pickedImage.uri, {
         encoding: FileSystem.EncodingType.Base64,
@@ -120,6 +164,27 @@ const EditarMascotaScreen = ({ route, navigation }) => {
       if (uploadError) {
         console.error(uploadError);
         Alert.alert("Error", "No se pudo subir la imagen.");
+=======
+      const filePath = `${pet.user_id}/${pet.id}.${pickedImage.extension}`;
+
+      // Convertir base64 → bytes (Uint8Array)
+      const binary = atob(pickedImage.base64);
+      const bytes = new Uint8Array(binary.length);
+
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+
+      const { error } = await supabase.storage
+        .from("user_pets")
+        .upload(filePath, bytes, {
+          contentType: pickedImage.mimeType,
+          upsert: true, // ✔ REEMPLAZA LA FOTO EXISTENTE
+        });
+
+      if (error) {
+        console.error("Upload error:", error);
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
         return pet.foto_url;
       }
 
@@ -151,8 +216,16 @@ const EditarMascotaScreen = ({ route, navigation }) => {
           onPress: async () => {
             try {
               await deletePet(pet.id);
+<<<<<<< HEAD
               Alert.alert("Listo", "Mascota eliminada correctamente.", [
                 { text: "OK", onPress: () => navigation.navigate("MisMascotas") },
+=======
+              Alert.alert("Listo", "Mascota eliminada.", [
+                {
+                  text: "OK",
+                  onPress: () => navigation.navigate("MisMascotas"),
+                },
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
               ]);
             } catch (error) {
               console.error(error);
@@ -216,11 +289,18 @@ const EditarMascotaScreen = ({ route, navigation }) => {
 
         <Text style={styles.headerTitle}>Editar Mascota</Text>
 
+<<<<<<< HEAD
         {/* BOTÓN TACHO */}
         <TouchableOpacity onPress={handleDelete}>
           <MaterialIcons
             name="delete"
             size={24}
+=======
+        <TouchableOpacity onPress={handleDelete}>
+          <MaterialIcons
+            name="delete"
+            size={26}
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
             color={colors.estado.perdido.base}
           />
         </TouchableOpacity>
@@ -284,7 +364,10 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                 style={styles.input}
                 value={values.nombre}
                 onChangeText={handleChange("nombre")}
+<<<<<<< HEAD
                 onBlur={handleBlur("nombre")}
+=======
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
               />
               {touched.nombre && errors.nombre && (
                 <Text style={styles.errorText}>{errors.nombre}</Text>
@@ -296,10 +379,15 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                 style={styles.input}
                 value={values.especie}
                 onChangeText={handleChange("especie")}
+<<<<<<< HEAD
                 onBlur={handleBlur("especie")}
                 placeholder="Perro, Gato..."
               />
               {touched.especie && errors.especie && (
+=======
+              />
+              {errors.especie && touched.especie && (
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
                 <Text style={styles.errorText}>{errors.especie}</Text>
               )}
 
@@ -313,15 +401,22 @@ const EditarMascotaScreen = ({ route, navigation }) => {
 
               {/* EDAD */}
               <Text style={styles.label}>Edad*</Text>
+<<<<<<< HEAD
               <View style={styles.ageRow}>
                 <TextInput
                   style={[styles.input, { flex: 1, marginRight: 10 }]}
                   placeholder="Número"
+=======
+              <View style={styles.row}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginRight: 10 }]}
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
                   keyboardType="numeric"
                   value={values.edad_numero}
                   onChangeText={handleChange("edad_numero")}
                 />
 
+<<<<<<< HEAD
                 <View style={styles.row}>
                   <TouchableOpacity
                     style={[
@@ -359,6 +454,43 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                     </Text>
                   </TouchableOpacity>
                 </View>
+=======
+                <TouchableOpacity
+                  style={[
+                    styles.chipSmall,
+                    values.edad_unidad === "mes" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("edad_unidad", "mes")}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      values.edad_unidad === "mes" &&
+                        styles.chipTextSelected,
+                    ]}
+                  >
+                    Meses
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.chipSmall,
+                    values.edad_unidad === "año" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("edad_unidad", "año")}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      values.edad_unidad === "año" &&
+                        styles.chipTextSelected,
+                    ]}
+                  >
+                    Años
+                  </Text>
+                </TouchableOpacity>
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
               </View>
 
               {/* PELAJE */}
@@ -382,7 +514,12 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                   <Text
                     style={[
                       styles.chipText,
+<<<<<<< HEAD
                       values.sexo === "macho" && styles.chipTextSelected,
+=======
+                      values.sexo === "macho" &&
+                        styles.chipTextSelected,
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
                     ]}
                   >
                     Macho
@@ -399,7 +536,12 @@ const EditarMascotaScreen = ({ route, navigation }) => {
                   <Text
                     style={[
                       styles.chipText,
+<<<<<<< HEAD
                       values.sexo === "hembra" && styles.chipTextSelected,
+=======
+                      values.sexo === "hembra" &&
+                        styles.chipTextSelected,
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
                     ]}
                   >
                     Hembra
@@ -473,8 +615,11 @@ const EditarMascotaScreen = ({ route, navigation }) => {
   );
 };
 
+<<<<<<< HEAD
 export default EditarMascotaScreen;
 
+=======
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
 // --------------------------------------------------------------
 // ESTILOS
 // --------------------------------------------------------------
@@ -496,9 +641,12 @@ const styles = StyleSheet.create({
     color: colors.botones.textoPrimario,
     fontSize: 18,
     fontWeight: "bold",
+<<<<<<< HEAD
   },
   scrollContent: {
     padding: 16,
+=======
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   card: {
     backgroundColor: colors.fondo.componentes,
@@ -523,7 +671,11 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 20,
+<<<<<<< HEAD
     backgroundColor: "#E5E7EB",
+=======
+    backgroundColor: "#EEE",
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
     justifyContent: "center",
     alignItems: "center",
   },
@@ -534,45 +686,72 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
+<<<<<<< HEAD
     fontWeight: "600",
     marginBottom: 4,
     color: colors.texto.primario,
     marginTop: 8,
+=======
+    fontWeight: "bold",
+    marginTop: 10,
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   input: {
     borderWidth: 1,
     borderColor: colors.bordes.primario,
     borderRadius: 8,
+<<<<<<< HEAD
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
     backgroundColor: "#F9FAFB",
+=======
+    padding: 10,
+    marginTop: 4,
+    backgroundColor: "#FAFAFA",
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     marginVertical: 6,
+<<<<<<< HEAD
   },
   ageRow: {
     flexDirection: "row",
     alignItems: "center",
+=======
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   chip: {
     flex: 1,
     borderWidth: 1,
+<<<<<<< HEAD
     borderColor: colors.bordes.primario,
     borderRadius: 50,
+=======
+    borderColor: "#AAA",
+    borderRadius: 20,
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
     paddingVertical: 8,
     alignItems: "center",
   },
   chipSmall: {
+<<<<<<< HEAD
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 50,
     borderWidth: 1,
     borderColor: colors.bordes.primario,
     marginRight: 8,
+=======
+    borderWidth: 1,
+    borderColor: "#AAA",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   chipSelected: {
     backgroundColor: colors.primarios.indigo,
@@ -584,7 +763,11 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: "white",
+<<<<<<< HEAD
     fontWeight: "600",
+=======
+    fontWeight: "bold",
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   saveButton: {
     marginTop: 20,
@@ -592,6 +775,10 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
+<<<<<<< HEAD
+=======
+    marginTop: 20,
+>>>>>>> f3796ed79ca88c48d2f8e643399bca8073733a78
   },
   saveButtonText: {
     color: colors.botones.textoPrimario,
@@ -601,7 +788,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: colors.estado.perdido.base,
     fontSize: 12,
-    marginTop: -4,
-    marginBottom: 4,
+    marginTop: 2,
   },
 });

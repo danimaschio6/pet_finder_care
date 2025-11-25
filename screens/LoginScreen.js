@@ -197,7 +197,7 @@ const LoginScreen = ({ onLogin, navigation }) => {
                   placeholder="Contraseña"
                   placeholderTextColor={colors.texto.secundario}
                   value={password}
-                  onChangeText={(text) => setPassword(text.toLowerCase())}
+                  onChangeText={(text) => setPassword(text)}
                   secureTextEntry={!showPassword}
                   autoComplete="password"
                   textContentType="password"

@@ -96,7 +96,10 @@ const MisMascotasScreen = ({ navigation: navProp }) => {
       onPress={() => navProp?.navigate("VerMascota", { pet: item })}
       onEdit={() => navProp?.navigate("EditarMascota", { pet: item })}
       onAddReminder={() =>
-        navProp?.navigate("ReminderModal", { petId: item.id })
+        navProp?.navigate("Recordatorios", {
+          petId: item.id,
+          petName: item.nombre
+       })
       }
       onViewHistory={() =>
         navProp?.navigate("VerHistorial", { petId: item.id })
