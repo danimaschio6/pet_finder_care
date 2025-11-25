@@ -4,22 +4,35 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import PetMap from "./components/PetMap";
 
+interface ICoords {
+    latitud: number,
+    longitud: number
+}
 interface IPet {
-  id: string
-  tipo: string
-  nombre: string
-  estado: string
-  descripcion: string
-  detalle: string
-  distancia: string
+    id: string
+    tipo: string
+    nombre: string
+    estado: string
+    descripcion: string
+    detalle: string
+    distancia: string
+    latitud?: number
+    longitud?: number
 }
 
 export default function NearbyPetDetailScreen() {
     const route = useRoute();
     const navigation = useNavigation();
     const insets = useSafeAreaInsets();
-    const {mascota}= route.params as { mascota: any };
+    const { mascota }= route.params as { mascota: any };
+    //const { mascota }= route.params as { mascota: IPet };
+
+    const coordenadas: ICoords = {
+        latitud: mascota.latitud,
+        longitud: mascota.longitud,
+    };
 
     return (
         <View style={styles.screen}>
@@ -66,12 +79,18 @@ export default function NearbyPetDetailScreen() {
                         <Text style={styles.label}>Distancia:</Text>
                         <Text style={styles.valor}>{mascota.distancia}</Text>
                     </View>
+
+                    {/* 
                     <View style={styles.mockMapa}>
                         <Text style={ styles.textMapa }>Mapa</Text>
                     </View>
+                     */}
+                    
+                    <View style={{ height: 250, borderRadius: 10, overflow: "hidden", marginVertical: 16 }}>
+                        <PetMap {...coordenadas} />
+                    </View>
                 </ScrollView>
                     
-                
             </View>
 
         </View>

@@ -11,6 +11,13 @@ import { v4 as uuidv4 } from 'uuid'; // Necesita 'npm install uuid react-native-
 import colors from '../data/colors.json';
 import { supabase } from '../supabase/client/supabaseClient'; 
 
+//mapa ubicacion
+import LocationSelectMap from "./components/LocationSelectMap";
+import PetMap from "./components/PetMap";
+
+//para subida alternativa imagen 
+//import * as FileSystem from "expo-file-system/legacy";
+
 const ReportPetScreen = ({ onBackPress }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -26,13 +33,23 @@ const ReportPetScreen = ({ onBackPress }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedPetName, setPublishedPetName] = useState('');
 
+  //mapa ubicacion
+  const [selectedLatitude, setSelectedLatitude] = useState(null);
+  const [selectedLongitude, setSelectedLongitude] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+
   // Función para validar si todos los campos requeridos están completos
   const isFormValid = () => {
     return petName.trim() !== '' && 
-           petBreed.trim() !== '' && 
-           description.trim() !== '' && 
-           lastLocation.trim() !== '' && 
-           photoUri !== null;
+    petBreed.trim() !== '' && 
+    description.trim() !== '' && 
+    lastLocation.trim() !== '' && 
+
+    //mapa ubicacion
+    selectedLatitude !== null && 
+    selectedLongitude !== null && 
+
+    photoUri !== null;
   };
 
   // Función para limpiar todos los campos del formulario
@@ -41,6 +58,11 @@ const ReportPetScreen = ({ onBackPress }) => {
     setPetBreed('');
     setDescription('');
     setLastLocation('');
+
+    //mapa ubicacion
+    setSelectedLatitude(null);
+    setSelectedLongitude(null);
+
     setPhotoUri(null);
     setPhotoAsset(null);
     setIsUploading(false);
@@ -77,84 +99,139 @@ const ReportPetScreen = ({ onBackPress }) => {
    */
   const uploadImageToSupabase = async (uri, asset = null) => {
     setIsUploading(true);
-    
     let fileToUpload;
     let fileExt;
     let contentType;
     
     try {
-        // En web, usar el objeto File directamente para evitar problemas de CORB
-        if (Platform.OS === 'web' && asset?.file) {
-            console.log('DEBUG: Modo WEB - Usando objeto File directamente');
-            fileToUpload = asset.file;
-            fileExt = asset.fileName?.split('.').pop() || 'jpg';
-            contentType = asset.mimeType || `image/${fileExt}`;
-        } else {
-            // En móvil, convertir URI a blob usando fetch
-            console.log('DEBUG: Modo MÓVIL - Convirtiendo URI a blob');
-            
-            // Obtener extensión de la URI
-            const uriParts = uri.split('.');
-            fileExt = uriParts[uriParts.length - 1] || 'jpg';
-            
-            // Convertir URI local a blob
-            console.log('DEBUG: Intentando FETCH de URI local...');
-            const response = await fetch(uri);
-            
-            if (!response.ok) {
-                throw new Error(`Error al obtener la imagen: ${response.statusText}`);
-            }
-            
-            fileToUpload = await response.blob();
-            contentType = `image/${fileExt}`;
-            console.log('DEBUG: FETCH exitoso. Blob creado.');
-        }
-
-        // Generar nombre único para el archivo
-        const fileName = `${uuidv4()}.${fileExt}`;
-        console.log('DEBUG: Nombre de archivo generado:', fileName);
-
-        // Subir el archivo al bucket 'pet-images'
-        console.log('DEBUG: Intentando SUBIDA a Supabase...');
-        const { data, error } = await supabase.storage
-            .from('pet-images') // Debe coincidir con el nombre de tu Bucket
-            .upload(fileName, fileToUpload, {
-                cacheControl: '3600',
-                upsert: false,
-                contentType: contentType
-            });
+      // En web, usar el objeto File directamente para evitar problemas de CORB
+      if (Platform.OS === 'web' && asset?.file) {
+        console.log('DEBUG: Modo WEB - Usando objeto File directamente');
+        fileToUpload = asset.file;
+        fileExt = asset.fileName?.split('.').pop() || 'jpg';
+        contentType = asset.mimeType || `image/${fileExt}`;
+      } else {
+        // En móvil, convertir URI a blob usando fetch
+        console.log('DEBUG: Modo MÓVIL - Convirtiendo URI a blob');
         
-        console.log('DEBUG: Subida terminada. Analizando resultado...');
-
-        if (error) {
-            // Si hay un error aquí, es un fallo de Storage.
-            throw new Error(`Fallo al subir imagen a Storage: ${error.message}.`);
-        }
-
-        // Obtener la URL pública del archivo
-        const { data: publicUrlData } = supabase.storage
-            .from('pet-images')
-            .getPublicUrl(fileName);
+        // Obtener extensión de la URI
+        const uriParts = uri.split('.');
+        fileExt = uriParts[uriParts.length - 1] || 'jpg';
         
-        console.log('DEBUG: URL Pública obtenida:', publicUrlData.publicUrl);
+        // Convertir URI local a blob
+        console.log('DEBUG: Intentando FETCH de URI local...');
+        const response = await fetch(uri);
+        
+        if (!response.ok) {
+            throw new Error(`Error al obtener la imagen: ${response.statusText}`);
+        }
+        
+        fileToUpload = await response.blob();
+        contentType = `image/${fileExt}`;
+        console.log('DEBUG: FETCH exitoso. Blob creado.');
+      }
 
-        return publicUrlData.publicUrl;
+      // Generar nombre único para el archivo
+      const fileName = `${uuidv4()}.${fileExt}`;
+      console.log('DEBUG: Nombre de archivo generado:', fileName);
+
+      // Subir el archivo al bucket 'pet-images'
+      console.log('DEBUG: Intentando SUBIDA a Supabase...');
+      const { data, error } = await supabase.storage
+      .from('pet-images') // Debe coincidir con el nombre de tu Bucket
+      .upload(fileName, fileToUpload, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: contentType
+      });
+      console.log('DEBUG: Subida terminada. Analizando resultado...');
+
+      if (error) {
+        // Si hay un error aquí, es un fallo de Storage.
+        throw new Error(`Fallo al subir imagen a Storage: ${error.message}.`);
+      }
+
+      // Obtener la URL pública del archivo
+      const { data: publicUrlData } = supabase.storage
+      .from('pet-images')
+      .getPublicUrl(fileName);
+      
+      console.log('DEBUG: URL Pública obtenida:', publicUrlData.publicUrl);
+      return publicUrlData.publicUrl;
 
     } catch (error) {
-        // MUY IMPORTANTE: SI CAE AQUÍ, TE MOSTRARÁ EL ERROR EN CONSOLA
-        setIsUploading(false); // Habilitamos el botón
-        console.error('ERROR EN EL PROCESO DE SUBIDA:', error);
-        throw new Error(`Fallo en el proceso de subida: ${error.message}.`);
+      // MUY IMPORTANTE: SI CAE AQUÍ, TE MOSTRARÁ EL ERROR EN CONSOLA
+      setIsUploading(false); // Habilitamos el botón
+      console.error('ERROR EN EL PROCESO DE SUBIDA:', error);
+      throw new Error(`Fallo en el proceso de subida: ${error.message}.`);
     }
   };
 
+  /**
+   * Sube el archivo de imagen a Supabase Storage.
+   * Version alternativa dionisio, funcionando en expo go
+   */
+  /* 
+  function base64ToBytes(base64) {
+    const binary = global.atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+  async function uploadImageToSupabase(uri) {
+    try {
+      console.log("DEBUG: Leyendo archivo como base64 (modo literal)...");
+
+      //Aca está la diferencia clave
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: "base64", //esto funciona siempre
+      });
+
+      console.log("DEBUG: Convirtiendo base64 a bytes...");
+
+      const fileBytes = base64ToBytes(base64);
+
+      const fileName = `${uuidv4()}.jpg`;
+
+      console.log("DEBUG: Subiendo imagen...");
+
+      const { data, error } = await supabase.storage
+        .from("pet-images")
+        .upload(fileName, fileBytes, {
+          contentType: "image/jpeg",
+          upsert: false,
+        });
+
+      if (error) {
+        console.log("ERROR SUPABASE:", error);
+        throw error;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("pet-images")
+        .getPublicUrl(fileName);
+
+      console.log("DEBUG: URL pública:", publicUrlData.publicUrl);
+
+      return publicUrlData.publicUrl;
+
+    } catch (err) {
+      console.log("ERROR SUBIDA:", err);
+      throw new Error(`Fallo al subir la imagen: ${err.message}`);
+    }
+  }
+  */
 
   // -------------------------------------------------------------
   // LÓGICA DE PUBLICACIÓN FINAL
   // -------------------------------------------------------------
   const handlePublish = async () => {
     // 1. Validación de campos: Ahora la foto también es obligatoria
-    if (!petName || !petBreed || !description || !lastLocation || !photoUri) {
+    if (!petName || !petBreed || !description || !lastLocation || !photoUri || !selectedLatitude || !selectedLongitude) {
       Alert.alert("Error", "¡Todos los campos, incluyendo la foto, son obligatorios!");
       return;
     }
@@ -176,6 +253,9 @@ const ReportPetScreen = ({ onBackPress }) => {
         owner_id: null,
         image_url: imageUrl, // Columna de Supabase debe ser 'image_url' (text, nullable)
         status: reportType === 'perdida' ? 'perdida' : 'encontrada', // Guardar el estado del aviso
+        //agregados para mapa ubicacion
+        latitude: selectedLatitude,
+        longitude: selectedLongitude,
       };
 
       // 4. Insertar los datos en Supabase
@@ -354,12 +434,36 @@ const ReportPetScreen = ({ onBackPress }) => {
           </View>
         </View>
 
-        <View style={styles.mapSection}>
-          <View style={styles.mapPlaceholder}>
-            <MaterialCommunityIcons name="map" size={40} color={colors.texto.secundario} />
-            <Text style={styles.mapText}>Mapa de Ubicación</Text>
-            <Text style={styles.mapSubText}>Próximamente: podrás seleccionar la ubicación en el mapa</Text>
+        {/* mapa ubicacion */}
+        {/* 
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Elija la ubicacion en el mapa</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+
           </View>
+        </View>
+        */}
+        <View style={styles.mapSection}>
+          {/* mapa lejano — si no hay ubicación seleccionada */}
+          {selectedLatitude === null && selectedLongitude === null ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowMapModal(true)}
+              style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+            >
+              <PetMap latitud={-38.4161} longitud={-63.6167} zoom={4} hideMarker />
+            </TouchableOpacity>
+          ) : (
+            /* mapa con marcador — ubicación elegida */
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowMapModal(true)}
+              style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+            >
+              <PetMap latitud={selectedLatitude} longitud={selectedLongitude} />
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
@@ -474,6 +578,21 @@ const ReportPetScreen = ({ onBackPress }) => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+
+      {/* Modal mapa ubicacion */}
+      <Modal visible={showMapModal} animationType="slide">
+        <LocationSelectMap
+          initialLat={selectedLatitude || -34.6037}
+          initialLng={selectedLongitude || -58.3816}
+          onLocationSelected={(lat, lng) => {
+            setSelectedLatitude(lat);
+            setSelectedLongitude(lng);
+            //setLastLocation(`${lat}, ${lng}`); // guardás algo para Supabase - Pisa lo ingresado por usuario - usar geocode?
+            setShowMapModal(false);
+          }}
+          onClose={() => setShowMapModal(false)}
+        />
       </Modal>
     </View>
   );

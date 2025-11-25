@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch, ActivityIndicator, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import colors from "../data/colors.json";
 import PetCard from "./components//PetCardComponent";
 import { supabase } from "../supabase/client/supabaseClient";
+
+import LocationSelectMap from "./components/LocationSelectMap";
+import * as Location from "expo-location";
 
 interface IPet {
   id: string
@@ -14,6 +17,8 @@ interface IPet {
   descripcion: string
   detalle: string
   distancia: string
+  latitud?: number
+  longitud?: number
 }
 
 export default function NearbyPetsScreen() {
@@ -26,55 +31,93 @@ export default function NearbyPetsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
-  {/*
-  const renderCard = ( {item} ) => {
-    const isPerdido = item.estado === 'Perdido';
-    return (
-      <View style={ styles.card }>
+  //estados mapa
+  const [userLocation, setUserLocation] = useState<{ lat: number, long: number } | null>(null);
+  const [modalMapaEleccionVisible, setModalMapaEleccionVisible] = useState(false);
+  //estados location
+  const [locationStatus, setLocationStatus] = useState<"granted" | "denied" | "unknown">("unknown");
 
-        <View style={[
-            styles.badge, 
-            {
-              backgroundColor: isPerdido ? colors.estado.perdido.fondo : colors.estado.encontrado.fondo ,
-            },
-        ]}>
-          <Text style={{ 
-            color: isPerdido ? colors.estado.perdido.base : colors.estado.encontrado.base, fontWeight: 'bold',
-          }}>
-            {item.tipo}
-          </Text>
-        </View>
+  const getLocation = async () =>{
+    const location = await Location.getCurrentPositionAsync();
+    setUserLocation({
+      lat: location.coords.latitude,
+      long: location.coords.longitude,
+    });
+  }
+  const pedirPermisoLocation = async () => {
+    let {status, granted, canAskAgain} = await Location.requestForegroundPermissionsAsync();
+    //let {status, ios, android, expires, granted, canAskAgain} =
+    if (status!== 'granted') {
+      if (!canAskAgain) {
+        Alert.alert("Permiso denegado", "Es necesario que habilite el permiso en la configuración de su dispositivo.", 
+          [{
+            text: 'Cancelar',
+            onPress: ()=> console.log('Cancel Pressed'),
+            style: 'cancel',
+          },
+          {
+            text: 'OK',
+            onPress: ()=> console.log('Ok Pressed'),
+          },
+          ]
+        )
+        setLocationStatus("denied");
+        return;
+      }
 
-        <View style={{ flex: 1 }}>
-          <Text style={ styles.nombre }>
-            {item.nombre}{' '}
-            
-            <Text style={{
-                color: isPerdido ? colors.estado.perdido.base : colors.estado.encontrado.base,
-            }}>
-              ({item.estado})
-            </Text>
+      Alert.alert("Permiso denegado", "Es necesario el permiso para acceder a su ubicación actual", [
+        {
+          text: 'Cancelar',
+          onPress: () => console.log('Cancel Pressed'),
+          style: 'cancel',
+        },
+        {
+          text: 'OK',
+          //onPress: () => pedirPermisoLocation(),
+          onPress: () => setLocationStatus("denied"),
+        },
+      ])
+      return
+    } else if (granted) {
+      setLocationStatus("granted");
+      getLocation();
+    }
+  }
 
-          </Text>
-          <Text style={styles.descripcion}>{item.descripcion}</Text>
-          <Text style={styles.detalle}>📍 {item.detalle}</Text>
-          <Text style={styles.distancia}>{item.distancia}</Text>
-        </View>
-        <Text>ver</Text>
-      </View>
-    );
-  };
-  */}
+  function calcularDistanciaKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+    const radio = 6371; //Km de radio de la tierra
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return radio * c;
+  }
 
   // Cargar mascotas desde Supabase
+  {/* 
   useEffect(() => {
     loadPets();
   }, []);
-
   // Recargar cuando cambie el filtro
   useEffect(() => {
     loadPets();
   }, [filtroPerdidas, soloConFoto]);
+  */}
+
+  //permiso expo-location
+  useEffect(() => {
+    pedirPermisoLocation();
+  }, []);
+  // Cargar mascotas desde Supabase, recarga cuando cambien los filtros
+  useEffect(() => {
+    if (userLocation) loadPets();
+  }, [userLocation, filtroPerdidas, soloConFoto]);
 
   const loadPets = async () => {
     try {
@@ -83,7 +126,7 @@ export default function NearbyPetsScreen() {
       // Construir la query base
       let query = supabase
         .from('pets')
-        .select('id, name, species, breed, description, location, image_url, status, created_at')
+        .select('id, name, species, breed, description, location, image_url, status, created_at, latitude, longitude')
         .order('created_at', { ascending: false });
 
       // Filtrar por estado si no es "Todas"
@@ -115,7 +158,10 @@ export default function NearbyPetsScreen() {
         descripcion: pet.description || 'Sin descripción',
         detalle: pet.location ? `📍 ${pet.location}` : '📍 Ubicación no especificada',
         distancia: 'Distancia no disponible', // Por ahora, se puede calcular después con geolocalización
-        image_url: pet.image_url || null, // Incluir la URL de la imagen
+        image_url: pet.image_url || null, // Incluir la URL de la imagen        
+        // coordenadas
+        latitud: pet.latitude,
+        longitud: pet.longitude
       }));
 
       setPets(mappedPets);
@@ -128,7 +174,9 @@ export default function NearbyPetsScreen() {
   };
 
   // Filtrar por búsqueda
+  {/* 
   const mascotasFiltradas: IPet[] = pets.filter((item) => {
+
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -137,6 +185,47 @@ export default function NearbyPetsScreen() {
       item.tipo.toLowerCase().includes(query) ||
       item.detalle.toLowerCase().includes(query)
     );
+
+  });
+  */}
+
+  // Filtrar búsqueda
+  const mascotasFiltradas: IPet[] = pets.filter((item) => {
+    // sin ubicacion de usuario no filtramos nada. No importan los demas filtros pq igual la lista no se muestra
+    if (!userLocation || (!item.latitud && !item.longitud )) return false;
+
+    // cálculo de distancia si la mascota tiene coordenadas
+    if (item.latitud && item.longitud) {
+      const dist = calcularDistanciaKm(
+        userLocation.lat,
+        userLocation.long,
+        item.latitud,
+        item.longitud
+      );
+
+      item.distancia = `${dist.toFixed(1)} km`;
+
+      // si está activado "menosDe5km"
+      //if (menosDe5km && dist > 5) return false;
+      
+      const distanciaMaxima = menosDe5km ? 5 : 10;
+      if (dist > distanciaMaxima) return false;
+    }
+
+    // luego filtro por búsqueda
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase();
+      if (
+        !item.nombre.toLowerCase().includes(q) &&
+        !item.descripcion.toLowerCase().includes(q) &&
+        !item.tipo.toLowerCase().includes(q) &&
+        !item.detalle.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
   });
 
   return (
@@ -250,6 +339,37 @@ export default function NearbyPetsScreen() {
           onChangeText={setSearchQuery}
           autoCorrect={false}
         />
+
+        { locationStatus === "denied" && (
+          <Text style={{ color: "red", textAlign: "center", marginBottom: 10 }}>
+            No diste permiso para usar la ubicación. Podés elegir una ubicación manualmente.
+          </Text>
+        ) }
+
+        {/* botón modal mapa */}
+            <View style={styles.locationBtnContainer}>
+            <TouchableOpacity style={styles.locationBtn} onPress={() => setModalMapaEleccionVisible(true)}>
+              <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
+              <Ionicons name="map-outline" size={18} color= {colors.botones.secundario}/>
+              Definir ubicación
+            </Text>
+            </TouchableOpacity>
+          </View>
+        
+
+        {/*modal mapa */}
+        <Modal visible={ modalMapaEleccionVisible } animationType="slide">
+          <LocationSelectMap 
+          initialLat={ userLocation?.lat }
+          initialLng={ userLocation?.long }
+          onLocationSelected={(lat, long) => {
+            setUserLocation({ lat, long });
+            setModalMapaEleccionVisible(false);
+          }}
+          onClose={() => setModalMapaEleccionVisible(false)}
+          />
+        </Modal>
+        
         
         {/* Lista */}
         {/*
@@ -260,7 +380,26 @@ export default function NearbyPetsScreen() {
           contentContainerStyle={{ paddingBottom: 80 }}
         />
         */}
-        {isLoading ? (
+        {!userLocation ? (
+          <View style={{ paddingTop: 40, alignItems: "center" }}>
+            <Text style={{ color: colors.texto.secundario, fontSize: 16, marginBottom: 10 }}>
+              Defina una ubicación para ver mascotas cercanas.
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => setModalMapaEleccionVisible(true)}
+              style={{
+                backgroundColor: colors.primarios.indigo,
+                padding: 12,
+                borderRadius: 10,
+                width: "80%",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "bold" }}>Elegir ubicación</Text>
+            </TouchableOpacity>
+          </View>
+        ): isLoading ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
             <ActivityIndicator size="large" color={colors.primarios.indigo} />
             <Text style={{ marginTop: 10, color: colors.texto.secundario }}>Cargando mascotas...</Text>
@@ -440,5 +579,15 @@ const styles = StyleSheet.create({
   switchLabel: {
     color: colors.texto.primario,
     fontSize: 16,
+  },
+  locationBtnContainer: {
+    paddingHorizontal: 12, 
+    marginTop: 10, 
+  },
+  locationBtn: {
+    backgroundColor: colors.primarios.indigo, 
+    paddingVertical: 12, 
+    borderRadius: 10, 
+    alignItems: "center", 
   },
 });
