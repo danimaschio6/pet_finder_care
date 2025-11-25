@@ -318,16 +318,15 @@ export default function NearbyPetsScreen() {
                 </View>
 
                 <TouchableOpacity
-                  style={[styles.botonFiltro, { marginTop: 20 }]}
+                  style={[styles.botonFiltroActivo, { marginTop: 20 }]}
                   onPress={() => setModalFiltrosVisible(false)}
                 >
-                  <Text style={styles.filtroText}>Cerrar</Text>
+                  <Text style={styles.filtroActivoText}>Cerrar</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </Modal>
 
-          
         </View>
         
         {/* Buscador */}
