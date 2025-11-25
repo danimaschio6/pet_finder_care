@@ -9,12 +9,10 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
-import { decode as atob } from "base64-js";
-
 import { Formik } from "formik";
 import * as Yup from "yup";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -25,8 +23,8 @@ import {
   deletePetHistory,
   uploadHistoryFile,
 } from "../supabase/services/petHistoryService";
-import { Linking } from "react-native";
 
+// OPCIONES
 const tipoOptions = ["vacuna", "desparasitacion", "otro"];
 
 const condicionOptions = [
@@ -39,6 +37,7 @@ const condicionOptions = [
   "otra",
 ];
 
+// VALIDACIÓN
 const historySchema = Yup.object().shape({
   tipo: Yup.string()
     .oneOf(tipoOptions, "Selecciona un tipo válido")
@@ -60,6 +59,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [pickedFile, setPickedFile] = useState(null);
 
+  // ----------------------------- PICKER -----------------------------
   const handlePickFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -83,16 +83,10 @@ const EditarHistorialScreen = ({ route, navigation }) => {
     }
   };
 
-  const isPdfUrl = (url) => {
-    if (!url) return false;
-    return /\.pdf$/i.test(url);
-  };
+  const isPdfUrl = (url) => /\.pdf$/i.test(url || "");
+  const isImageUrl = (url) => /\.(jpe?g|png|webp|gif)$/i.test(url || "");
 
-  const isImageUrl = (url) => {
-    if (!url) return false;
-    return /\.(jpe?g|png|webp|gif)$/i.test(url);
-  };
-
+  // --------------------------- ABRIR ARCHIVO ACTUAL ---------------------------
   const handleOpenCurrentAttachment = async () => {
     if (!history.archivo_url) return;
 
@@ -101,7 +95,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
       if (supported) {
         await Linking.openURL(history.archivo_url);
       } else {
-        Alert.alert("Error", "No se pudo abrir el archivo actual.");
+        Alert.alert("Error", "No se pudo abrir el archivo.");
       }
     } catch (err) {
       console.error(err);
@@ -109,6 +103,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
     }
   };
 
+  // --------------------------- ELIMINAR REGISTRO ---------------------------
   const handleDelete = () => {
     Alert.alert(
       "Eliminar registro",
@@ -134,24 +129,15 @@ const EditarHistorialScreen = ({ route, navigation }) => {
     );
   };
 
+  // --------------------------- ACTUALIZAR ---------------------------
   const handleUpdate = async (values) => {
     try {
       setLoading(true);
 
       let archivo_url = history.archivo_url;
 
+      // Si se reemplaza archivo
       if (pickedFile) {
-        const base64 = await FileSystem.readAsStringAsync(pickedFile.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        const binaryString = atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-
         const extension = pickedFile.name.includes(".")
           ? pickedFile.name.split(".").pop()
           : "bin";
@@ -160,7 +146,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
           history.pet_id,
           history.id,
           extension,
-          bytes
+          pickedFile.uri // SOLO PASAMOS URI (SDK 54 compatible)
         );
 
         archivo_url = publicUrl;
@@ -170,7 +156,9 @@ const EditarHistorialScreen = ({ route, navigation }) => {
         tipo: values.tipo,
         fecha: values.fecha,
         peso:
-          values.peso === "" ? null : values.peso === null ? null : Number(values.peso),
+          values.peso === "" || values.peso === null
+            ? null
+            : Number(values.peso),
         condicion_corporal: values.condicion_corporal || null,
         detalle: values.detalle?.trim() || null,
         archivo_url,
@@ -189,6 +177,10 @@ const EditarHistorialScreen = ({ route, navigation }) => {
     }
   };
 
+  // ======================================================================
+  //                                UI
+  // ======================================================================
+
   return (
     <View style={styles.container}>
       {/* HEADER */}
@@ -203,7 +195,6 @@ const EditarHistorialScreen = ({ route, navigation }) => {
 
         <Text style={styles.headerTitle}>Editar historial</Text>
 
-        {/* BOTÓN ELIMINAR */}
         <TouchableOpacity onPress={handleDelete}>
           <MaterialIcons
             name="delete"
@@ -303,7 +294,8 @@ const EditarHistorialScreen = ({ route, navigation }) => {
                     key={c}
                     style={[
                       styles.chipSmall,
-                      values.condicion_corporal === c && styles.chipSelected,
+                      values.condicion_corporal === c &&
+                        styles.chipSelected,
                     ]}
                     onPress={() => setFieldValue("condicion_corporal", c)}
                   >
@@ -319,6 +311,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
+
               {touched.condicion_corporal && errors.condicion_corporal && (
                 <Text style={styles.errorText}>
                   {errors.condicion_corporal}
@@ -340,6 +333,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
               {history.archivo_url && (
                 <View style={{ marginTop: 12 }}>
                   <Text style={styles.label}>Archivo actual</Text>
+
                   <TouchableOpacity
                     style={styles.fileButtonSecondary}
                     onPress={handleOpenCurrentAttachment}
@@ -364,6 +358,7 @@ const EditarHistorialScreen = ({ route, navigation }) => {
 
               {/* NUEVO ARCHIVO */}
               <Text style={styles.label}>Reemplazar archivo (opcional)</Text>
+
               <TouchableOpacity
                 style={styles.fileButton}
                 onPress={handlePickFile}
@@ -377,11 +372,12 @@ const EditarHistorialScreen = ({ route, navigation }) => {
                   {pickedFile ? "Cambiar archivo" : "Seleccionar archivo"}
                 </Text>
               </TouchableOpacity>
+
               {pickedFile && (
                 <Text style={styles.fileName}>{pickedFile.name}</Text>
               )}
 
-              {/* BOTÓN GUARDAR */}
+              {/* GUARDAR */}
               <TouchableOpacity
                 style={[styles.saveButton, loading && { opacity: 0.6 }]}
                 onPress={handleSubmit}
@@ -402,6 +398,10 @@ const EditarHistorialScreen = ({ route, navigation }) => {
 };
 
 export default EditarHistorialScreen;
+
+// ======================================================================
+//                                STYLES
+// ======================================================================
 
 const styles = StyleSheet.create({
   container: {
@@ -534,3 +534,4 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 });
+

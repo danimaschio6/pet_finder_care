@@ -12,8 +12,9 @@ import {
 } from "react-native";
 
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system";
-import { decode as atob } from "base64-js";
+// 👇 YA NO USAMOS expo-file-system AQUÍ
+// import * as FileSystem from "expo-file-system";
+// import { decode as atob } from "base64-js";
 
 import { Formik } from "formik";
 import * as Yup from "yup";
@@ -64,7 +65,7 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ["image/*", "application/pdf"],
-        copyToCacheDirectory: true,
+        copyToCacheDirectory: true, // importante para que expo-file-system/legacy pueda leerlo
         multiple: false,
       });
 
@@ -91,28 +92,20 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
         pet_id: petId,
         tipo: values.tipo,
         fecha: values.fecha,
-        peso: values.peso === "" ? null : values.peso === null ? null : Number(values.peso),
+        peso:
+          values.peso === "" || values.peso === null
+            ? null
+            : Number(values.peso),
         condicion_corporal: values.condicion_corporal || null,
         detalle: values.detalle?.trim() || null,
         archivo_url: null,
       };
 
-      // 1) Crear registro sin archivo
+      // 1) Crear registro básico sin archivo
       const created = await createPetHistory(baseRecord);
 
-      // 2) Si hay archivo → subir a Storage y actualizar
+      // 2) Si hay archivo → delegar lectura/subida al servicio
       if (pickedFile) {
-        const base64 = await FileSystem.readAsStringAsync(pickedFile.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        const binaryString = atob(base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-
         const extension = pickedFile.name.includes(".")
           ? pickedFile.name.split(".").pop()
           : "bin";
@@ -121,7 +114,7 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
           petId,
           created.id,
           extension,
-          bytes
+          pickedFile.uri // 👈 IMPORTANTE: solo enviamos el URI
         );
 
         await updatePetHistory(created.id, { archivo_url: publicUrl });
@@ -134,7 +127,7 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
-      console.error(err);
+      console.error("ERROR AGREGAR HISTORIAL:", err);
       Alert.alert("Error", "No se pudo guardar el historial.");
     } finally {
       setLoading(false);
@@ -245,7 +238,8 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
                     key={c}
                     style={[
                       styles.chipSmall,
-                      values.condicion_corporal === c && styles.chipSelected,
+                      values.condicion_corporal === c &&
+                        styles.chipSelected,
                     ]}
                     onPress={() => setFieldValue("condicion_corporal", c)}
                   >
@@ -261,11 +255,6 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
                   </TouchableOpacity>
                 ))}
               </View>
-              {touched.condicion_corporal && errors.condicion_corporal && (
-                <Text style={styles.errorText}>
-                  {errors.condicion_corporal}
-                </Text>
-              )}
 
               {/* DETALLE */}
               <Text style={styles.label}>Detalle</Text>
@@ -319,6 +308,7 @@ const AgregarHistorialScreen = ({ route, navigation }) => {
 
 export default AgregarHistorialScreen;
 
+// ==== STYLES ====
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -441,3 +431,5 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 });
+
+

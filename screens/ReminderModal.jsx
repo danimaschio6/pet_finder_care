@@ -1,5 +1,4 @@
 // screens/ReminderModal.jsx
-
 import React, { useState } from "react";
 import {
   View,
@@ -11,7 +10,11 @@ import {
   Alert,
   Platform,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
+
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
+
 import * as Notifications from "expo-notifications";
 import { Ionicons } from "@expo/vector-icons";
 import uuid from "react-native-uuid";
@@ -19,20 +22,39 @@ import uuid from "react-native-uuid";
 import colors from "../data/colors.json";
 import { addReminder } from "../supabase/services/reminderStorage";
 
+// 🔔 HANDLER GLOBAL PARA NOTIFICACIONES (SDK 54)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 const ReminderModal = ({ route, navigation }) => {
   const { petId, petName } = route.params;
 
   const [visible, setVisible] = useState(true);
   const [text, setText] = useState("");
   const [date, setDate] = useState(new Date());
-  const [showPicker, setShowPicker] = useState(false);
 
-  // 🔔 Programar notificación local
+  // Solo iOS usa el picker dentro del modal
+  const [showPickerIOS, setShowPickerIOS] = useState(false);
+
+  // ─────────────────────────────────────────────
+  // 🔔 PROGRAMAR NOTIFICACIÓN LOCAL — SDK 54 OK
+  // ─────────────────────────────────────────────
   const scheduleNotif = async (when) => {
-    const { status } = await Notifications.requestPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permiso requerido", "Activa las notificaciones.");
-      return null;
+    const perms = await Notifications.getPermissionsAsync();
+
+    if (perms.granted !== true) {
+      const req = await Notifications.requestPermissionsAsync();
+      if (req.granted !== true) {
+        Alert.alert("Permiso requerido", "Activa las notificaciones.");
+        return null;
+      }
     }
 
     return await Notifications.scheduleNotificationAsync({
@@ -41,11 +63,58 @@ const ReminderModal = ({ route, navigation }) => {
         body: text,
         sound: true,
       },
-      trigger: when,
+      trigger: when, // fecha directa
     });
   };
 
-  // 💾 Guardar recordatorio
+  // ─────────────────────────────────────────────
+  // 🗓 ANDROID — ABRIR PICKER NATIVO (SEGURO EN SDK 54)
+  // ─────────────────────────────────────────────
+  const openAndroidPicker = () => {
+    // 1. Fecha
+    DateTimePickerAndroid.open({
+      value: date,
+      mode: "date",
+      is24Hour: true,
+      onChange: (event, selectedDate) => {
+        if (event.type === "dismissed" || !selectedDate) return;
+
+        const base = selectedDate;
+
+        // 2. Hora
+        DateTimePickerAndroid.open({
+          value: base,
+          mode: "time",
+          is24Hour: true,
+          onChange: (event2, selectedTime) => {
+            if (event2.type === "dismissed" || !selectedTime) return;
+
+            const finalDate = new Date(
+              base.getFullYear(),
+              base.getMonth(),
+              base.getDate(),
+              selectedTime.getHours(),
+              selectedTime.getMinutes()
+            );
+
+            setDate(finalDate);
+          },
+        });
+      },
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // 🗓 iOS — MANTENER PICKER JSX (ESTABLE)
+  // ─────────────────────────────────────────────
+  const openPicker = () => {
+    if (Platform.OS === "android") openAndroidPicker();
+    else setShowPickerIOS(true);
+  };
+
+  // ─────────────────────────────────────────────
+  // 💾 GUARDAR RECORDATORIO EN SUPABASE + LOCAL NOTIF
+  // ─────────────────────────────────────────────
   const save = async () => {
     if (!text.trim()) {
       Alert.alert("Error", "Escribe un recordatorio.");
@@ -63,6 +132,7 @@ const ReminderModal = ({ route, navigation }) => {
     };
 
     await addReminder(petId, reminder);
+
     setVisible(false);
     navigation.goBack();
   };
@@ -81,28 +151,29 @@ const ReminderModal = ({ route, navigation }) => {
             onChangeText={setText}
           />
 
-          {/* FECHA */}
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowPicker(true)}
-          >
-            <Ionicons name="calendar" size={20} color={colors.primarios.indigo} />
+          {/* FECHA / HORA */}
+          <TouchableOpacity style={styles.dateButton} onPress={openPicker}>
+            <Ionicons
+              name="calendar"
+              size={20}
+              color={colors.primarios.indigo}
+            />
             <Text style={styles.dateButtonText}>{date.toLocaleString()}</Text>
           </TouchableOpacity>
 
-          {showPicker && (
+          {/* PICKER iOS */}
+          {Platform.OS === "ios" && showPickerIOS && (
             <DateTimePicker
               value={date}
               mode="datetime"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={(e, d) => {
-                if (Platform.OS !== "ios") setShowPicker(false);
-                if (d) setDate(d);
+              display="spinner"
+              onChange={(event, selectedDate) => {
+                if (selectedDate) setDate(selectedDate);
               }}
             />
           )}
 
-          {/* BOTÓN GUARDAR */}
+          {/* GUARDAR */}
           <TouchableOpacity style={styles.saveBtn} onPress={save}>
             <Text style={styles.saveText}>Guardar</Text>
           </TouchableOpacity>
