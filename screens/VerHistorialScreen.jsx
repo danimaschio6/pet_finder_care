@@ -90,7 +90,6 @@ const VerHistorialScreen = ({ route, navigation }) => {
       return;
     }
 
-    // PDF u otros → abrir con visor externo
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) {
@@ -177,13 +176,26 @@ const VerHistorialScreen = ({ route, navigation }) => {
             )}
           </View>
 
-          <TouchableOpacity onPress={() => handleDelete(item.id)}>
-            <MaterialIcons
-              name="delete"
-              size={24}
-              color={colors.estado.perdido.base}
-            />
-          </TouchableOpacity>
+          {/* ✅ ICONO DE EDITAR (ahora visible) */}
+          <View style={{ alignItems: "center", gap: 14 }}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("EditarHistorial", { history: item })}
+            >
+              <MaterialIcons
+                name="edit"
+                size={24}
+                color={colors.primarios.indigo}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <MaterialIcons
+                name="delete"
+                size={24}
+                color={colors.estado.perdido.base}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -256,7 +268,7 @@ const VerHistorialScreen = ({ route, navigation }) => {
 
 export default VerHistorialScreen;
 
-/* ================================
+/* ===============================
    ESTILOS — iOS / Minimal
 ================================ */
 const styles = StyleSheet.create({
