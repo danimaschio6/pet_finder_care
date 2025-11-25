@@ -1,6 +1,6 @@
 // screens/CrearMascotaScreen.jsx
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,175 +11,180 @@ import {
   Alert,
   Image,
   ActivityIndicator,
-} from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { Formik } from 'formik';
-import * as Yup from 'yup';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
 
-import colors from '../data/colors.json';
-import { supabase } from '../supabase/client/supabaseClient';
+import * as ImagePicker from "expo-image-picker";
+import { Formik } from "formik";
+import * as Yup from "yup";
+import { Ionicons } from "@expo/vector-icons";
 
-// 🔥 SERVICES
-import { createPet } from '../services/petsService';
+import colors from "../data/colors.json";
+import { supabase } from "../supabase/client/supabaseClient";
+import { createPet } from "../supabase/services/userPetsService";
+import { decode as atob } from "base-64";
 
-// --------------------------------------------------------
-// VALIDACIÓN FORM
-// --------------------------------------------------------
+// -------------------------------------------------------------
 const petSchema = Yup.object().shape({
-  nombre: Yup.string().required('El nombre es obligatorio'),
-  especie: Yup.string().required('La especie es obligatoria'),
+  nombre: Yup.string().required("El nombre es obligatorio"),
+  especie: Yup.string().required("La especie es obligatoria"),
   raza: Yup.string().nullable(),
   edad_numero: Yup.number()
-    .typeError('Debe ser un número')
     .nullable()
-    .min(0, 'No puede ser negativo'),
-  edad_unidad: Yup.string().oneOf(['mes', 'año', ''], 'Valor inválido'),
+    .typeError("Debe ser un número")
+    .min(0, "No puede ser negativo"),
+  edad_unidad: Yup.string().oneOf(["mes", "año"]).required(),
   pelaje: Yup.string().nullable(),
-  sexo: Yup.string().oneOf(['macho', 'hembra', ''], 'Valor inválido'),
-  estado_reproductivo: Yup.string().nullable(),
+  sexo: Yup.string().oneOf(["macho", "hembra"]).required(),
+  estado_reproductivo: Yup.string()
+    .oneOf(["castrado", "entero"])
+    .required(),
 });
 
 const CrearMascotaScreen = ({ navigation }) => {
   const [uploading, setUploading] = useState(false);
   const [pickedImage, setPickedImage] = useState(null);
 
-  // --------------------------------------------------------
-  // PICKER IMAGEN
-  // --------------------------------------------------------
+  // -------------------------------------------------------------
+  // PICKER SDK 54 → mediaTypes: ['images']
+  // -------------------------------------------------------------
   const handlePickImage = async () => {
     try {
-      const { status } =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
+        mediaTypes: ["images"], // ✔ CORRECTO SDK 54
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+        base64: true, // ✔ NECESARIO PARA SUPABASE
       });
 
-      if (!result.canceled) {
-        const asset = result.assets[0];
-        setPickedImage({
-          uri: asset.uri,
-          fileName: asset.fileName || `photo-${Date.now()}.jpg`,
-        });
-      }
+      if (result.canceled) return;
+
+      const asset = result.assets[0];
+
+      const mime = asset.mimeType ?? "image/jpeg";
+      const ext = mime.split("/")[1] ?? "jpg";
+
+      setPickedImage({
+        uri: asset.uri,
+        mimeType: mime,
+        extension: ext,
+        base64: asset.base64, // ✔ LISTA PARA SUBIR
+      });
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'No se pudo seleccionar la imagen.');
+      console.error("PICKER ERROR:", err);
+      Alert.alert("Error", "No se pudo seleccionar la imagen.");
     }
   };
 
-  // --------------------------------------------------------
-  // SUBIR IMAGEN A STORAGE (service internal)
-  // --------------------------------------------------------
-  const uploadImage = async (userId) => {
-    if (!pickedImage) return null;
+  // -------------------------------------------------------------
+  // SUBIDA DE IMAGEN A SUPABASE (DIRECTO BASE64)
+  // -------------------------------------------------------------
+  
+const uploadImage = async (userId) => {
+  if (!pickedImage?.base64) return null;
 
-    try {
-      setUploading(true);
+  try {
+    setUploading(true);
 
-      const response = await fetch(pickedImage.uri);
-      const blob = await response.blob();
+    const filePath = `${userId}/${Date.now()}.${pickedImage.extension}`;
 
-      const extension = pickedImage.fileName.split('.').pop();
-      const filePath = `${userId}/${Date.now()}.${extension}`;
+    // 1. Convertir base64 a bytes (archivo)
+    const binary = atob(pickedImage.base64);
+    const bytes = new Uint8Array(binary.length);
 
-      const { error: uploadError } = await supabase.storage
-        .from('user_pets')
-        .upload(filePath, blob, {
-          contentType: blob.type || 'image/jpeg',
-          upsert: false,
-        });
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
 
-      if (uploadError) {
-        console.error(uploadError);
-        Alert.alert('Error', 'No se pudo subir la foto.');
-        setUploading(false);
-        return null;
-      }
+    // 2. Subir archivo binario REAL a Supabase
+    const { error } = await supabase.storage
+      .from("user_pets")
+      .upload(filePath, bytes, {
+        contentType: pickedImage.mimeType,
+      });
 
-      const { data } =
-        supabase.storage.from('user_pets').getPublicUrl(filePath);
-
-      setUploading(false);
-      return data.publicUrl;
-    } catch (err) {
-      console.error(err);
-      setUploading(false);
+    if (error) {
+      console.error("Storage error:", error);
       return null;
     }
-  };
 
-  // --------------------------------------------------------
-  // GUARDAR MASCOTA USANDO EL SERVICE
-  // --------------------------------------------------------
+    // 3. Obtener URL pública
+    const { data } = supabase.storage
+      .from("user_pets")
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  } catch (err) {
+    console.error("uploadImage ERROR:", err);
+    return null;
+  } finally {
+    setUploading(false);
+  }
+};
+
+
+  // -------------------------------------------------------------
   const handleSubmitForm = async (values, { resetForm }) => {
     try {
       setUploading(true);
 
-      // Obtener usuario autenticado
       const {
         data: { user },
-        error: userError,
       } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        Alert.alert('Error', 'No se pudo obtener el usuario.');
-        setUploading(false);
+      if (!user) {
+        Alert.alert("Error", "No se pudo obtener el usuario.");
         return;
       }
 
       const userId = user.id;
 
-      // Subir imagen si existe
       let fotoUrl = null;
       if (pickedImage) fotoUrl = await uploadImage(userId);
 
-      // --------📌 USO REAL DEL SERVICE createPet -----------
       const newPet = {
         user_id: userId,
         nombre: values.nombre.trim(),
         especie: values.especie.trim(),
         raza: values.raza?.trim() || null,
-        edad_numero: values.edad_numero || null,
-        edad_unidad: values.edad_unidad || null,
+        edad_numero: values.edad_numero
+          ? Number(values.edad_numero)
+          : null,
+        edad_unidad: values.edad_unidad,
         pelaje: values.pelaje?.trim() || null,
-        sexo: values.sexo || null,
-        estado_reproductivo: values.estado_reproductivo?.trim() || null,
+        sexo: values.sexo,
+        estado_reproductivo: values.estado_reproductivo,
         foto_url: fotoUrl,
       };
 
       await createPet(newPet);
-      // ------------------------------------------------------
 
-      setUploading(false);
       resetForm();
       setPickedImage(null);
 
-      Alert.alert('Listo', 'Mascota creada correctamente.', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
+      Alert.alert("Listo", "Mascota creada correctamente.", [
+        { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (err) {
-      console.error(err);
+      console.log("ERROR SUPABASE:", err);
+      Alert.alert("Error", err.message ?? "Hubo un problema.");
+    } finally {
       setUploading(false);
-      Alert.alert('Error', 'Ocurrió un problema al guardar.');
     }
   };
 
+  // -------------------------------------------------------------
   return (
     <View style={styles.container}>
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.botones.textoPrimario} />
+          <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Añadir Mascota</Text>
         <View style={{ width: 24 }} />
@@ -188,153 +193,210 @@ const CrearMascotaScreen = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Formik
           initialValues={{
-            nombre: '',
-            especie: '',
-            raza: '',
-            edad_numero: '',
-            edad_unidad: '',
-            pelaje: '',
-            sexo: '',
-            estado_reproductivo: '',
+            nombre: "",
+            especie: "",
+            raza: "",
+            edad_numero: "",
+            edad_unidad: "",
+            pelaje: "",
+            sexo: "",
+            estado_reproductivo: "",
           }}
           validationSchema={petSchema}
           onSubmit={handleSubmitForm}
         >
-          {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+          {({
+            handleChange,
+            handleSubmit,
+            values,
+            errors,
+            touched,
+            setFieldValue,
+          }) => (
             <View style={styles.card}>
               {/* FOTO */}
-              <TouchableOpacity style={styles.photoContainer} onPress={handlePickImage}>
+              <TouchableOpacity
+                style={styles.photoContainer}
+                onPress={handlePickImage}
+              >
                 {pickedImage ? (
-                  <Image source={{ uri: pickedImage.uri }} style={styles.petPhoto} />
+                  <Image
+                    source={{ uri: pickedImage.uri }}
+                    style={styles.petPhoto}
+                  />
                 ) : (
                   <View style={styles.photoPlaceholder}>
-                    <Ionicons name="camera" size={28} color={colors.secundarios.gris} />
+                    <Ionicons name="camera" size={30} color="#888" />
                     <Text style={styles.photoText}>Añadir foto</Text>
                   </View>
                 )}
               </TouchableOpacity>
 
-              {/* NOMBRE */}
+              {/* CAMPOS */}
               <Text style={styles.label}>Nombre*</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Ej: Max"
                 value={values.nombre}
-                onChangeText={handleChange('nombre')}
-                onBlur={handleBlur('nombre')}
+                onChangeText={handleChange("nombre")}
               />
-              {touched.nombre && errors.nombre && (
+              {errors.nombre && touched.nombre && (
                 <Text style={styles.errorText}>{errors.nombre}</Text>
               )}
 
-              {/* ESPECIE */}
               <Text style={styles.label}>Especie*</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Perro, Gato..."
                 value={values.especie}
-                onChangeText={handleChange('especie')}
-                onBlur={handleBlur('especie')}
+                onChangeText={handleChange("especie")}
               />
-              {touched.especie && errors.especie && (
+              {errors.especie && touched.especie && (
                 <Text style={styles.errorText}>{errors.especie}</Text>
               )}
 
-              {/* RAZA */}
               <Text style={styles.label}>Raza</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Raza"
                 value={values.raza}
-                onChangeText={handleChange('raza')}
+                onChangeText={handleChange("raza")}
               />
 
-              {/* EDAD */}
-              <Text style={styles.label}>Edad</Text>
-              <View style={styles.row}>
-                <TextInput
-                  style={[styles.input, { flex: 1, marginRight: 8 }]}
-                  placeholder="Número"
-                  keyboardType="numeric"
-                  value={values.edad_numero}
-                  onChangeText={handleChange('edad_numero')}
-                />
-
-                <TouchableOpacity
-                  style={styles.chipContainer}
-                  onPress={() =>
-                    handleChange('edad_unidad')(
-                      values.edad_unidad === 'mes' ? 'año' : 'mes'
-                    )
-                  }
-                >
-                  <Text style={styles.chipText}>
-                    {values.edad_unidad === 'mes'
-                      ? 'Mes(es)'
-                      : values.edad_unidad === 'año'
-                      ? 'Año(s)'
-                      : 'Unidad'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* PELAJE */}
               <Text style={styles.label}>Pelaje</Text>
               <TextInput
                 style={styles.input}
                 value={values.pelaje}
-                onChangeText={handleChange('pelaje')}
+                onChangeText={handleChange("pelaje")}
               />
 
-              {/* SEXO */}
-              <Text style={styles.label}>Sexo</Text>
-              <View style={styles.row}>
+              <Text style={styles.label}>Edad*</Text>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginRight: 10 }]}
+                  keyboardType="numeric"
+                  value={values.edad_numero}
+                  onChangeText={handleChange("edad_numero")}
+                />
+
                 <TouchableOpacity
-                  style={[styles.chip, values.sexo === 'macho' && styles.chipSelected]}
-                  onPress={() => handleChange('sexo')('macho')}
+                  style={[
+                    styles.chipSmall,
+                    values.edad_unidad === "mes" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("edad_unidad", "mes")}
                 >
                   <Text
-                    style={[
-                      styles.chipText,
-                      values.sexo === 'macho' && styles.chipTextSelected,
-                    ]}
+                    style={
+                      values.edad_unidad === "mes" &&
+                      styles.chipTextSelected
+                    }
+                  >
+                    Meses
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.chipSmall,
+                    values.edad_unidad === "año" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("edad_unidad", "año")}
+                >
+                  <Text
+                    style={
+                      values.edad_unidad === "año" &&
+                      styles.chipTextSelected
+                    }
+                  >
+                    Años
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Sexo*</Text>
+              <View style={{ flexDirection: "row" }}>
+                <TouchableOpacity
+                  style={[
+                    styles.chip,
+                    values.sexo === "macho" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("sexo", "macho")}
+                >
+                  <Text
+                    style={
+                      values.sexo === "macho" && styles.chipTextSelected
+                    }
                   >
                     Macho
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.chip, values.sexo === 'hembra' && styles.chipSelected]}
-                  onPress={() => handleChange('sexo')('hembra')}
+                  style={[
+                    styles.chip,
+                    values.sexo === "hembra" && styles.chipSelected,
+                  ]}
+                  onPress={() => setFieldValue("sexo", "hembra")}
                 >
                   <Text
-                    style={[
-                      styles.chipText,
-                      values.sexo === 'hembra' && styles.chipTextSelected,
-                    ]}
+                    style={
+                      values.sexo === "hembra" && styles.chipTextSelected
+                    }
                   >
                     Hembra
                   </Text>
                 </TouchableOpacity>
               </View>
 
-              {/* ESTADO REPRODUCTIVO */}
-              <Text style={styles.label}>Estado reproductivo</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Castrado, entero..."
-                value={values.estado_reproductivo}
-                onChangeText={handleChange('estado_reproductivo')}
-              />
+              <Text style={styles.label}>Estado reproductivo*</Text>
+              <View style={{ flexDirection: "row" }}>
+                <TouchableOpacity
+                  style={[
+                    styles.chip,
+                    values.estado_reproductivo === "castrado" &&
+                      styles.chipSelected,
+                  ]}
+                  onPress={() =>
+                    setFieldValue("estado_reproductivo", "castrado")
+                  }
+                >
+                  <Text
+                    style={
+                      values.estado_reproductivo === "castrado" &&
+                      styles.chipTextSelected
+                    }
+                  >
+                    Castrado
+                  </Text>
+                </TouchableOpacity>
 
-              {/* BOTÓN GUARDAR */}
+                <TouchableOpacity
+                  style={[
+                    styles.chip,
+                    values.estado_reproductivo === "entero" &&
+                      styles.chipSelected,
+                  ]}
+                  onPress={() =>
+                    setFieldValue("estado_reproductivo", "entero")
+                  }
+                >
+                  <Text
+                    style={
+                      values.estado_reproductivo === "entero" &&
+                      styles.chipTextSelected
+                    }
+                  >
+                    Entero
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* GUARDAR */}
               <TouchableOpacity
                 style={[styles.saveButton, uploading && { opacity: 0.6 }]}
                 onPress={handleSubmit}
                 disabled={uploading}
               >
                 {uploading ? (
-                  <ActivityIndicator color={colors.botones.textoPrimario} />
+                  <ActivityIndicator color="white" />
                 ) : (
                   <Text style={styles.saveButtonText}>Guardar Mascota</Text>
                 )}
@@ -347,126 +409,76 @@ const CrearMascotaScreen = ({ navigation }) => {
   );
 };
 
-export default CrearMascotaScreen;
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.fondo.app,
-  },
+  container: { flex: 1, backgroundColor: colors.fondo.app },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingTop: 40,
     paddingHorizontal: 16,
     paddingBottom: 12,
     backgroundColor: colors.primarios.indigo,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
-  headerTitle: {
-    color: colors.botones.textoPrimario,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  scrollContent: {
-    padding: 16,
-  },
+  headerTitle: { color: "white", fontSize: 18, fontWeight: "bold" },
+  scrollContent: { padding: 16 },
   card: {
     backgroundColor: colors.fondo.componentes,
     borderRadius: 16,
     padding: 16,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
   },
-  photoContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  petPhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: 20,
-  },
+  photoContainer: { alignItems: "center", marginBottom: 16 },
+  petPhoto: { width: 100, height: 100, borderRadius: 20 },
   photoPlaceholder: {
     width: 100,
     height: 100,
     borderRadius: 20,
-    backgroundColor: '#E5E7EB',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#EEE",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  photoText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: colors.texto.secundario,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: colors.texto.primario,
-    marginTop: 8,
-  },
+  photoText: { marginTop: 4, fontSize: 12, color: "#666" },
+  label: { fontSize: 14, fontWeight: "bold", marginTop: 10 },
   input: {
     borderWidth: 1,
-    borderColor: colors.bordes.primario,
+    borderColor: "#DDD",
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    backgroundColor: '#F9FAFB',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 10,
     marginTop: 4,
-  },
-  chipContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.bordes.primario,
+    backgroundColor: "#FAFAFA",
   },
   chip: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.bordes.primario,
-    borderRadius: 999,
+    borderColor: "#AAA",
+    borderRadius: 20,
     paddingVertical: 8,
-    alignItems: 'center',
-    marginRight: 8,
+    alignItems: "center",
+    marginHorizontal: 5,
+  },
+  chipSmall: {
+    borderWidth: 1,
+    borderColor: "#AAA",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginHorizontal: 3,
   },
   chipSelected: {
     backgroundColor: colors.primarios.indigo,
     borderColor: colors.primarios.indigo,
   },
-  chipText: {
-    fontSize: 14,
-    color: colors.texto.primario,
-  },
-  chipTextSelected: {
-    color: colors.botones.textoPrimario,
-    fontWeight: '600',
-  },
+  chipTextSelected: { color: "white", fontWeight: "bold" },
   saveButton: {
-    marginTop: 20,
     backgroundColor: colors.botones.primario,
     paddingVertical: 14,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
+    marginTop: 20,
   },
-  saveButtonText: {
-    color: colors.botones.textoPrimario,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  errorText: {
-    color: colors.estado.perdido.base,
-    fontSize: 12,
-    marginTop: 2,
-  },
+  saveButtonText: { color: "white", fontSize: 16, fontWeight: "bold" },
 });
+
+export default CrearMascotaScreen;
+
+

@@ -5,38 +5,46 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from "react-native";
-import colors from "../../data/colors.json";
 import { Ionicons } from "@expo/vector-icons";
+import colors from "../../data/colors.json";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const PetCard = ({
   pet,
-  onPress,          // 👈 Navegar a VerMascota
-  onEdit,           // 👈 Botón lápiz
-  onAddReminder,    // 👈 Recordatorios
-  onViewHistory,    // 👈 Historial
+  onPress,
+  onEdit,
+  onAddReminder,
+  onViewHistory,
 }) => {
 
   const [expanded, setExpanded] = useState(false);
 
-  // -------------------------------
-  // 🔡 Pluralización automática
-  // -------------------------------
   const formatEdad = () => {
-    if (!pet.edad_numero || !pet.edad_unidad) return "Edad no registrada";
+  const n = pet.edad_numero;
+  const u = pet.edad_unidad;
 
-    const unidad = pet.edad_unidad === "mes" ? "mes" : "año";
-    const plural = pet.edad_numero > 1 ? "es" : "";
+  if (!n || !u) return "Edad no registrada";
 
-    return `${pet.edad_numero} ${unidad}${plural}`;
-  };
+  if (u === "mes") {
+    return n === 1 ? "1 mes" : `${n} meses`;
+  }
 
-  // -------------------------------
-  // 🟣 Ajuste castrado/castrada
-  // -------------------------------
-  const formatEstadoReproductivo = () => {
+  if (u === "año") {
+    return n === 1 ? "1 año" : `${n} años`;
+  }
+
+  return "Edad no registrada";
+};
+
+  const formatEstado = () => {
     if (!pet.estado_reproductivo) return "No especificado";
-
     if (pet.sexo === "hembra") {
       if (pet.estado_reproductivo === "castrado") return "castrada";
       if (pet.estado_reproductivo === "entero") return "entera";
@@ -44,26 +52,34 @@ const PetCard = ({
     return pet.estado_reproductivo;
   };
 
-  // -------------------------------
-  // 📸 Foto o inicial del nombre
-  // -------------------------------
+  // 🔥 FOTO DE LA MASCOTA — ARREGLADO Y OPTIMIZADO
   const renderPhoto = () => {
-    if (pet.foto_url) {
-      return <Image source={{ uri: pet.foto_url }} style={styles.petPhoto} />;
+    if (pet.foto_url && typeof pet.foto_url === "string") {
+      return (
+        <Image
+          source={{ uri: pet.foto_url }}
+          style={styles.petPhoto}
+          resizeMode="cover"
+        />
+      );
     }
 
     return (
       <View style={styles.avatarPlaceholder}>
         <Text style={styles.avatarText}>
-          {pet.nombre?.charAt(0)?.toUpperCase()}
+          {pet.nombre?.charAt(0)?.toUpperCase() || "?"}
         </Text>
       </View>
     );
   };
 
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
-      {/* FOTO + INFO PRINCIPAL + LAPIZ EDITAR */}
+    <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <View style={styles.row}>
         {renderPhoto()}
 
@@ -73,42 +89,35 @@ const PetCard = ({
           <Text style={styles.petDetails}>
             {pet.especie} · {pet.raza || "Sin raza"} · {formatEdad()}
           </Text>
+
+          <View style={{ flexDirection: "row", marginTop: 6 }}>
+            <View style={styles.chipSmall}>
+              <Text style={styles.chipText}>{pet.sexo}</Text>
+            </View>
+
+            <View style={[styles.chipSmall, { marginLeft: 6 }]}>
+              <Text style={styles.chipText}>{formatEstado()}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* BOTÓN EDITAR */}
         <TouchableOpacity onPress={onEdit}>
-          <Ionicons name="pencil" size={22} color={colors.primarios.indigo} />
+          <Ionicons name="create-outline" size={22} color={colors.primarios.indigo} />
         </TouchableOpacity>
       </View>
 
-      {/* BOTÓN EXPANDIR */}
-      <TouchableOpacity
-        style={styles.moreButton}
-        onPress={() => setExpanded(!expanded)}
-      >
+      <TouchableOpacity style={styles.moreButton} onPress={toggleExpand}>
         <Text style={styles.moreButtonText}>
-          {expanded ? "Ver menos" : "Ver más"}
+          {expanded ? "Ocultar detalles" : "Ver más detalles"}
         </Text>
       </TouchableOpacity>
 
-      {/* INFORMACIÓN EXTRA EXPANDIBLE */}
       {expanded && (
-        <View style={styles.extraInfo}>
-          <Text style={styles.extraItem}>
-            Pelaje: {pet.pelaje || "No registrado"}
-          </Text>
-
-          <Text style={styles.extraItem}>
-            Sexo: {pet.sexo || "No registrado"}
-          </Text>
-
-          <Text style={styles.extraItem}>
-            Estado reproductivo: {formatEstadoReproductivo()}
-          </Text>
-        </View>
+        <View style={styles.expandBox}>
+          <Text style={styles.extraItem}>Pelaje: {pet.pelaje || "No registrado"}</Text>  
+       </View>
       )}
 
-      {/* ACCIONES SECUNDARIAS */}
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.smallButton} onPress={onAddReminder}>
           <Ionicons name="notifications" size={18} color="#fff" />
@@ -129,14 +138,10 @@ export default PetCard;
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.fondo.componentes,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 16,
     marginBottom: 20,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    elevation: 4,
   },
 
   row: {
@@ -144,25 +149,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  // 🔥 Más grande, redondo y bonito
   petPhoto: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: "#ddd",
   },
 
   avatarPlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
     backgroundColor: "#d1d5db",
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
   },
 
   avatarText: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "bold",
-    color: "#555",
+    color: "#444",
   },
 
   petName: {
@@ -177,45 +184,59 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  chipSmall: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: colors.primarios.indigoClaro,
+    borderRadius: 50,
+  },
+
+  chipText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
   moreButton: {
-    marginTop: 8,
+    marginTop: 10,
   },
 
   moreButtonText: {
     color: colors.primarios.indigo,
     fontWeight: "600",
+    fontSize: 14,
   },
 
-  extraInfo: {
-    marginTop: 10,
+  expandBox: {
+    marginTop: 12,
     backgroundColor: "#eef2ff",
-    borderRadius: 10,
-    padding: 10,
+    padding: 12,
+    borderRadius: 12,
   },
 
   extraItem: {
     fontSize: 14,
-    color: colors.texto.primario,
     marginBottom: 4,
+    color: colors.texto.primario,
   },
 
   actionsRow: {
     flexDirection: "row",
-    marginTop: 14,
     justifyContent: "space-between",
+    marginTop: 16,
   },
 
   smallButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.primarios.indigoClaro,
-    padding: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    backgroundColor: colors.primarios.indigo,
+    padding: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
   },
 
   smallButtonText: {
-    color: "#fff",
+    color: "white",
     marginLeft: 6,
     fontWeight: "600",
     fontSize: 13,
