@@ -57,12 +57,12 @@ export default function LocationSelectMap(props: IProps) {
       </MapView>
 
       <View style={styles.panel}>
-        <TouchableOpacity onPress={confirmSelection} style={styles.btnConfirm}>
+        <TouchableOpacity onPress={confirmSelection} style={[styles.btn, styles.acceptBtn]}>
           <Text style={styles.btnText}>Usar esta ubicación</Text>
         </TouchableOpacity>
 
         {onClose && (
-          <TouchableOpacity onPress={onClose} style={styles.btnCancel}>
+          <TouchableOpacity onPress={onClose} style={[styles.btn, styles.cancelBtn]}>
             <Text style={styles.btnText}>Cancelar</Text>
           </TouchableOpacity>
         )}
@@ -79,24 +79,25 @@ const styles = StyleSheet.create({
   panel: {
     position: "absolute",
     bottom: 20,
-    width: "100%",
-    alignItems: "center",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 20,
   },
-  btnConfirm: {
-    backgroundColor: "#4CAF50",
-    padding: 14,
+  btn: {
+    flex: 1,
+    paddingVertical: 14,
     borderRadius: 10,
-    width: "80%",
     alignItems: "center",
-    marginBottom: 8
-  },
-  btnCancel: {
+    marginHorizontal: 5,
+  }, 
+  cancelBtn: {
     backgroundColor: "#d9534f",
-    padding: 14,
-    borderRadius: 10,
-    width: "80%",
-    alignItems: "center",
-  },
+  }, 
+  acceptBtn: {
+    backgroundColor: "#4CAF50",
+  }, 
   btnText: {
     color: "#fff",
     fontWeight: "bold",
