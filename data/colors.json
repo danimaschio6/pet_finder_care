@@ -1,39 +1,39 @@
 {
   "primarios": {
-    "indigo": "#6366f1",
-    "indigoClaro": "#4f46e5"
+    "indigo": "#007AFF",
+    "indigoClaro": "#5AC8FA"
   },
   "secundarios": {
-    "gris": "#6b7280"
+    "gris": "#8E8E93"
   },
   "fondo": {
-    "app": "#e0e7ff",
-    "componentes": "#fff"
+    "app": "#F2F2F7",
+    "componentes": "#FFFFFF"
   },
   "texto": {
-    "primario": "#374151",
-    "secundario": "#6b7280"
+    "primario": "#000000",
+    "secundario": "#8E8E93"
   },
   "estado": {
     "perdido": {
-      "base": "#ef4444",
-      "fondo": "#fee2e2"
+      "base": "#FF3B30",
+      "fondo": "#FFEBEE"
     },
     "encontrado": {
-      "base": "#22c55e",
-      "fondo": "#dcfce7"
+      "base": "#34C759",
+      "fondo": "#E8F5E9"
     }
   },
   "botones": {
-    "primario": "#6366f1",
-    "textoPrimario": "#ffffff",
-    "secundario": "#e0e7ff",
-    "textoSecundario": "#4f46e5"
+    "primario": "#007AFF",
+    "textoPrimario": "#FFFFFF",
+    "secundario": "#F2F2F7",
+    "textoSecundario": "#007AFF"
   },
   "bordes": {
-    "primario": "#d1d5db"
+    "primario": "#C6C6C8"
   },
   "varios": {
-    "sombra": "#000000"
+    "sombra": "rgba(0, 0, 0, 0.1)"
   }
 }

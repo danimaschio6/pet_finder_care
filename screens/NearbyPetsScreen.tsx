@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, Switch, ActivityIndicator } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import colors from "../data/colors.json";
 import PetCard from "./components//PetCardComponent";
@@ -16,6 +17,7 @@ interface IPet {
 }
 
 export default function NearbyPetsScreen() {
+  const insets = useSafeAreaInsets();
   const [filtroPerdidas, setFiltroPerdidas] = useState('Todas');
   const [modalFiltrosVisible, setModalFiltrosVisible] = useState(false);
   const [soloConFoto, setSoloConFoto] = useState(false);
@@ -140,7 +142,7 @@ export default function NearbyPetsScreen() {
   return (
     
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <Text style={styles.headerTitle}>Mascotas Cerca</Text>
       </View>
 
@@ -246,6 +248,7 @@ export default function NearbyPetsScreen() {
           placeholderTextColor={colors.texto.secundario}
           value={searchQuery}
           onChangeText={setSearchQuery}
+          autoCorrect={false}
         />
         
         {/* Lista */}
@@ -267,7 +270,10 @@ export default function NearbyPetsScreen() {
             data={mascotasFiltradas}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <PetCard {...item} />}
-            contentContainerStyle={{ paddingBottom: 80, margin: 15 }}
+            contentContainerStyle={{ 
+              paddingBottom: 68 + Math.max(insets.bottom, 8) + 20, 
+              margin: 15 
+            }}
             ListEmptyComponent={
               <Text style={{ textAlign: "center", marginTop: 20, color: colors.texto.secundario }}>
                 {searchQuery 
@@ -295,28 +301,32 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.fondo.componentes,
-    paddingHorizontal: 5,
-    paddingTop: 20,
-    borderRadius: 15,
-    marginBottom: 50,
-    marginHorizontal: 20,
+    paddingHorizontal: 0,
+    paddingTop: 0,
+    borderRadius: 0,
+    marginBottom: 0,
+    marginHorizontal: 0,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: colors.botones.textoPrimario,
-    
+    letterSpacing: -0.5,
   },
   header: {
-    paddingVertical: 16,
+    paddingBottom: 16,
     paddingHorizontal: 20,
     backgroundColor: colors.primarios.indigo,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 40,
-    marginBottom: 10,
-    borderBottomLeftRadius: 25,
-    borderBottomRightRadius: 25,
+    marginBottom: 0,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   containerDos: {
     flex: 1,
@@ -327,39 +337,47 @@ const styles = StyleSheet.create({
   },
   filtros: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 12,
-    marginHorizontal: 5,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    gap: 8,
   },
   botonFiltro: {
     paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: colors.botones.secundario,
+    backgroundColor: colors.fondo.app,
+    borderWidth: 0.5,
+    borderColor: colors.bordes.primario,
   },
   botonFiltroActivo: {
     paddingVertical: 8,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
-    color: "#ffffffff",
-    backgroundColor: colors.botones.primario,
+    backgroundColor: colors.primarios.indigo,
   },
   filtroText: {
-    color: colors.botones.textoSecundario,
-    fontWeight: '500',
+    color: colors.texto.secundario,
+    fontWeight: '600',
+    fontSize: 15,
   },
   filtroActivoText: {
     color: colors.botones.textoPrimario,
-    fontWeight: '500',
+    fontWeight: '600',
+    fontSize: 15,
   },
   input: {
     backgroundColor: colors.fondo.componentes,
-    padding: 15,
+    padding: 12,
+    paddingHorizontal: 16,
     borderRadius: 10,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: colors.bordes.primario,
-    marginHorizontal: 12,
-    marginVertical: 4,
+    marginHorizontal: 20,
+    marginVertical: 8,
+    fontSize: 17,
+    color: colors.texto.primario,
   },
   card: {
     flexDirection: 'row',

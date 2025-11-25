@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 
 interface IPet {
   id: string
@@ -14,13 +16,23 @@ interface IPet {
 }
 
 export default function NearbyPetDetailScreen() {
-    const route= useRoute();
+    const route = useRoute();
+    const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
     const {mascota}= route.params as { mascota: any };
 
     return (
         <View style={styles.screen}>
-            <View style={styles.header}>
+            <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+                <TouchableOpacity 
+                    style={styles.backButton}
+                    onPress={() => navigation.goBack()}
+                    activeOpacity={0.7}
+                >
+                    <Ionicons name="chevron-back" size={28} color={colors.botones.textoPrimario} />
+                </TouchableOpacity>
                 <Text style={styles.headerTitle}>Detalles de Mascota</Text>
+                <View style={styles.backButton} />
             </View>
             <View style={styles.container}>
                 <ScrollView style={styles.container}>
@@ -55,7 +67,7 @@ export default function NearbyPetDetailScreen() {
                         <Text style={styles.valor}>{mascota.distancia}</Text>
                     </View>
                     <View style={styles.mockMapa}>
-                        <Text style={ styles.textMapa }>De grande quiero ser un mapa.</Text>
+                        <Text style={ styles.textMapa }>Mapa</Text>
                     </View>
                 </ScrollView>
                     
@@ -75,60 +87,88 @@ const styles = StyleSheet.create({
         paddingBottom: 50,
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontWeight: '600',
         color: colors.botones.textoPrimario,
+        flex: 1,
+        textAlign: 'center',
     },
     header: {
-        paddingVertical: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingBottom: 16,
         paddingHorizontal: 20,
         backgroundColor: colors.primarios.indigo,
+        marginBottom: 0,
+        borderBottomLeftRadius: 20,
+        borderBottomRightRadius: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 40,
-        marginBottom: 10,
-        borderBottomLeftRadius: 25,
-        borderBottomRightRadius: 25,
     },
     container: {
         flex: 1,
         backgroundColor: colors.fondo.componentes,
-        padding: 10,
-        borderRadius: 20,
-        marginTop: 10,
-        marginHorizontal: 16,
+        padding: 20,
+        borderRadius: 0,
+        marginTop: 0,
+        marginHorizontal: 0,
     },
     titulo: {
-        fontSize: 22,
-        fontWeight: "bold",
+        fontSize: 34,
+        fontWeight: "700",
         color: colors.texto.primario,
-        marginBottom: 10,
+        marginBottom: 12,
+        letterSpacing: -0.5,
     },
     estado: {
-        fontSize: 16,
-        marginBottom: 20,
+        fontSize: 17,
+        marginBottom: 24,
         color: colors.texto.secundario,
+        fontWeight: '400',
     },
     seccion: {
-        marginBottom: 14,
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 0.5,
+        borderBottomColor: colors.bordes.primario,
     },
     label: {
-        fontWeight: "bold",
+        fontWeight: "600",
         color: colors.texto.primario,
+        fontSize: 13,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 8,
     },
     valor: {
-        color: colors.texto.secundario,
-        marginTop: 2,
+        color: colors.texto.primario,
+        marginTop: 4,
+        fontSize: 17,
+        fontWeight: '400',
     },
     mockMapa: {
-        height: 200,
-        borderRadius: 4,
-        backgroundColor: "#414141ff",
+        height: 220,
+        borderRadius: 12,
+        backgroundColor: colors.fondo.app,
         justifyContent: "center",
         alignItems: "center",
-        marginVertical: 16,
+        marginVertical: 20,
+        borderWidth: 0.5,
+        borderColor: colors.bordes.primario,
     },
     textMapa:{
-        color: "#ffffffff",
+        color: colors.texto.secundario,
+        fontSize: 15,
+        fontWeight: '400',
     }
 });
