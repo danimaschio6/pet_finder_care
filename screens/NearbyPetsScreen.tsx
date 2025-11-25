@@ -193,7 +193,7 @@ export default function NearbyPetsScreen() {
   // Filtrar búsqueda
   const mascotasFiltradas: IPet[] = pets.filter((item) => {
     // sin ubicacion de usuario no filtramos nada. No importan los demas filtros pq igual la lista no se muestra
-    if (!userLocation) return false;
+    if (!userLocation || (!item.latitud && !item.longitud )) return false;
 
     // cálculo de distancia si la mascota tiene coordenadas
     if (item.latitud && item.longitud) {
@@ -348,25 +348,15 @@ export default function NearbyPetsScreen() {
         ) }
 
         {/* botón modal mapa */}
-        <TouchableOpacity 
-        style={{ 
-          flex: 1,
-          paddingVertical: 12,
-          paddingHorizontal: 16,
-          borderRadius: 8,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          backgroundColor: colors.primarios.indigo,
-        }}
-        onPress={ () => setModalMapaEleccionVisible(true) }
-        >
-          
-          <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
-            <Ionicons name="map-outline" size={18} color= {colors.botones.secundario}/>
-            Definir ubicación
-          </Text>
-        </TouchableOpacity>
+            <View style={styles.locationBtnContainer}>
+            <TouchableOpacity style={styles.locationBtn} onPress={() => setModalMapaEleccionVisible(true)}>
+              <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
+              <Ionicons name="map-outline" size={18} color= {colors.botones.secundario}/>
+              Definir ubicación
+            </Text>
+            </TouchableOpacity>
+          </View>
+        
 
         {/*modal mapa */}
         <Modal visible={ modalMapaEleccionVisible } animationType="slide">
@@ -588,7 +578,17 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   switchLabel: {
-    color: colors.texto.primario,
-    fontSize: 16,
+    color: colors.texto.primario, 
+    fontSize: 16, 
+  },
+  locationBtnContainer: {
+  paddingHorizontal: 12, 
+  marginTop: 10, 
+  },
+  locationBtn: {
+    backgroundColor: colors.primarios.indigo, 
+    paddingVertical: 12, 
+    borderRadius: 10, 
+    alignItems: "center", 
   },
 });
