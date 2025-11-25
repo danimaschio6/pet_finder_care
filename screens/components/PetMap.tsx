@@ -2,14 +2,22 @@ import { Alert, StyleSheet, View , Text} from "react-native";
 import MapView, { Marker } from "react-native-maps";
 
 interface ICoords {
-  latitud?: number,
-  longitud?: number
+  latitud: number | null;
+  longitud: number | null;
+  zoom?: number;
+  hideMarker?: boolean;
 }
 
 export default function PetMap(props: ICoords) {
-    const { latitud, longitud } = props;
+    const { latitud, longitud, zoom, hideMarker } = props;
+
+    const noCoords =
+    latitud === null ||
+    longitud === null ||
+    latitud === undefined ||
+    longitud === undefined;
     
-    if (!latitud || !longitud) {
+    if (noCoords) {
         return (
             <View style={styles.mockMapa}>
                 <Text style={styles.textMapa}>Ubicación no disponible</Text>
@@ -63,22 +71,19 @@ export default function PetMap(props: ICoords) {
   return (
     <MapView 
     style= { styles.map }
-    initialRegion= {{
-        latitude: latitud, 
-        longitude: longitud, 
-        latitudeDelta: 0.01, 
-        longitudeDelta: 0.01, 
+    region= {{
+        latitude: Number(latitud), 
+        longitude: Number(longitud), 
+        latitudeDelta: zoom ? zoom : 0.01,
+        longitudeDelta: zoom ? zoom : 0.01,
     }} 
     scrollEnabled= { false } 
-    zoomEnabled= { false } 
+    zoomEnabled= { true } 
     showsUserLocation= { true } 
     >
-        <Marker 
-        coordinate= {{ 
-            latitude: latitud, 
-            longitude: longitud, 
-        }}
-        />
+        {!hideMarker && (
+            <Marker coordinate= {{ latitude: Number(latitud), longitude: Number(longitud) }} />
+        )}
         {/*
         <Marker 
         coordinate= {{ 

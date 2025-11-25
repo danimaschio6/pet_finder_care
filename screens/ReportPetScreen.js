@@ -11,6 +11,10 @@ import { v4 as uuidv4 } from 'uuid'; // Necesita 'npm install uuid react-native-
 import colors from '../data/colors.json';
 import { supabase } from '../supabase/client/supabaseClient'; 
 
+//ubicacion
+import LocationSelectMap from "./components/LocationSelectMap";
+import PetMap from "./components/PetMap";
+
 const ReportPetScreen = ({ onBackPress }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -26,13 +30,19 @@ const ReportPetScreen = ({ onBackPress }) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedPetName, setPublishedPetName] = useState('');
 
+  const [selectedLatitude, setSelectedLatitude] = useState(null);
+  const [selectedLongitude, setSelectedLongitude] = useState(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+
   // Función para validar si todos los campos requeridos están completos
   const isFormValid = () => {
     return petName.trim() !== '' && 
-           petBreed.trim() !== '' && 
-           description.trim() !== '' && 
-           lastLocation.trim() !== '' && 
-           photoUri !== null;
+    petBreed.trim() !== '' && 
+    description.trim() !== '' && 
+    lastLocation.trim() !== '' && 
+    selectedLatitude !== null && 
+    selectedLongitude !== null && 
+    photoUri !== null; 
   };
 
   // Función para limpiar todos los campos del formulario
@@ -41,6 +51,8 @@ const ReportPetScreen = ({ onBackPress }) => {
     setPetBreed('');
     setDescription('');
     setLastLocation('');
+    setSelectedLatitude(null);
+    setSelectedLongitude(null);
     setPhotoUri(null);
     setPhotoAsset(null);
     setIsUploading(false);
@@ -154,7 +166,7 @@ const ReportPetScreen = ({ onBackPress }) => {
   // -------------------------------------------------------------
   const handlePublish = async () => {
     // 1. Validación de campos: Ahora la foto también es obligatoria
-    if (!petName || !petBreed || !description || !lastLocation || !photoUri) {
+    if (!petName || !petBreed || !description || !lastLocation || !photoUri || !selectedLatitude || !selectedLongitude) {
       Alert.alert("Error", "¡Todos los campos, incluyendo la foto, son obligatorios!");
       return;
     }
@@ -176,6 +188,8 @@ const ReportPetScreen = ({ onBackPress }) => {
         owner_id: null,
         image_url: imageUrl, // Columna de Supabase debe ser 'image_url' (text, nullable)
         status: reportType === 'perdida' ? 'perdida' : 'encontrada', // Guardar el estado del aviso
+        latitude: selectedLatitude,
+        longitude: selectedLongitude,
       };
 
       // 4. Insertar los datos en Supabase
@@ -335,7 +349,7 @@ const ReportPetScreen = ({ onBackPress }) => {
           />
           <Text style={styles.characterCount}>{description.length}/500</Text>
         </View>
-
+        {/* Ubicacion */}
         <View style={styles.inputGroup}>
           <View style={styles.labelContainer}>
             <Text style={styles.label}>Última Ubicación Conocida</Text>
@@ -355,11 +369,27 @@ const ReportPetScreen = ({ onBackPress }) => {
         </View>
 
         <View style={styles.mapSection}>
-          <View style={styles.mapPlaceholder}>
-            <MaterialCommunityIcons name="map" size={40} color={colors.texto.secundario} />
-            <Text style={styles.mapText}>Mapa de Ubicación</Text>
-            <Text style={styles.mapSubText}>Próximamente: podrás seleccionar la ubicación en el mapa</Text>
-          </View>
+  
+          {/* MAPA ESTÁTICO — si no hay ubicación seleccionada */}
+          {selectedLatitude === null && selectedLongitude === null ? (
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowMapModal(true)}
+              style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+            >
+              <PetMap latitud={-38.4161} longitud={-63.6167} zoom={4} hideMarker />
+            </TouchableOpacity>
+          ) : (
+            /* MAPA CON MARCADOR — ubicación elegida */
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowMapModal(true)}
+              style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+            >
+              <PetMap latitud={selectedLatitude} longitud={selectedLongitude} />
+            </TouchableOpacity>
+          )}
+
         </View>
 
         <View style={styles.inputGroup}>
@@ -474,6 +504,21 @@ const ReportPetScreen = ({ onBackPress }) => {
             </TouchableOpacity>
           </View>
         </View>
+      </Modal>
+      
+      {/* Modal mapa */}
+      <Modal visible={showMapModal} animationType="slide">
+        <LocationSelectMap
+          initialLat={selectedLatitude || -34.6037}
+          initialLng={selectedLongitude || -58.3816}
+          onLocationSelected={(lat, lng) => {
+            setSelectedLatitude(lat);
+            setSelectedLongitude(lng);
+            //setLastLocation(`${lat}, ${lng}`); // guardás algo para Supabase - Pisa lo ingresado por usuario - usar geocode?
+            setShowMapModal(false);
+          }}
+          onClose={() => setShowMapModal(false)}
+        />
       </Modal>
     </View>
   );
@@ -840,6 +885,19 @@ const styles = StyleSheet.create({
     color: colors.botones.textoPrimario,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  mapButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primarios.indigo,
+    padding: 12,
+    borderRadius: 10,
+    justifyContent: "center",
+  },
+  mapButtonText: {
+    color: "#fff",
+    marginLeft: 6,
+    fontWeight: "bold",
   },
 });
 
