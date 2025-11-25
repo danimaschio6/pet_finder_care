@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,12 +12,15 @@ import {
   StatusBar,
   Modal,
   Pressable,
+  ActivityIndicator,
+  Alert
 } from "react-native";
 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
+import { supabase } from "../supabase/client/supabaseClient"; // Cliente Supabase
 
 export default function Chat({ navigation: navProp, route }) {
   const navigation = useNavigation();
@@ -28,13 +31,34 @@ export default function Chat({ navigation: navProp, route }) {
     route?.params?.avatarUrl ||
     "https://cdn-icons-png.flaticon.com/512/616/616408.png";
 
+  const avatarUri = avatarUrl || "https://cdn-icons-png.flaticon.com/512/616/616408.png";
+  const chatTitle = petName ? `Consulta sobre ${petName}` : "Chat Pet Finder";
+
+  // estados
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const [messages, setMessages] = useState([
-    { id: "1", text: "¡Bienvenido a Pet Finder 🐾!", from: "system" },
-  ]);
+  // referencias para no perder valores entre renderizados
+  const currentUserRef = useRef(null);
+  const conversationIdRef = useRef(null);
 
-  const [input, setInput] = useState("");
+  //INICIAR CHAT (buscar usuario y la conversacion)
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        // Si no tiene ownerId ,para todo para evitar error en la BD
+        if (!ownerId) {
+          console.error("Error crítico: Intentando abrir chat sin ID de dueño (ownerId es null/undefined)");
+          Alert.alert("Error", "No se pudo identificar al dueño de esta mascota.");
+          setLoading(false);
+          return;
+        }
+        //Obtener mi usuario actual
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return; // Si no hay usuario logueado, no carga nada
+        currentUserRef.current = user.id;
 
   // Navegar a las pantallas del TabNavigator
   const navigateToTab = (screenName) => {
@@ -44,28 +68,117 @@ export default function Chat({ navigation: navProp, route }) {
   const sendMessage = () => {
     if (input.trim().length === 0) return;
 
-    const newMessage = {
-      id: Date.now().toString(),
-      text: input,
-      from: "user",
+        if (existingConv) {
+          // Si ya hablaron antes, cargamos el ID y los mensajes
+          conversationIdRef.current = existingConv.id;
+          await loadMessages(existingConv.id);
+          subscribeToMessages(existingConv.id);
+        } else {
+          // Si es chat nuevo, dejamos de cargar (se creara al enviar el primer mensaje)
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error iniciando chat:", err);
+        setLoading(false);
+      }
     };
 
     setMessages([...messages, newMessage]);
     setInput("");
   };
 
-  const renderItem = ({ item }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.from === "user" ? styles.userMessage : styles.systemMessage,
-      ]}
-    >
-      <Text style={item.from === "user" ? styles.userText : styles.systemText}>
-        {item.text}
-      </Text>
-    </View>
-  );
+  //SUSCRIPCIÓN REALTIME
+  const subscribeToMessages = (convId) => {
+    supabase
+      .channel(`chat:${convId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` },
+        (payload) => {
+          // Si el mensaje nuevo NO es mío, lo agrego (los míos ya los agrego localmente)
+          if (payload.new.sender_id !== currentUserRef.current) {
+            setMessages((prev) => [payload.new, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+  };
+
+  //ENVIAR MENSAJE
+  const sendMessage = async () => {
+    if (input.trim().length === 0) return;
+
+    // Seguridad extra. Si no hay ownerId, alertamos.
+    if (!ownerId) {
+      Alert.alert("Error", "No se puede enviar el mensaje porque falta el destinatario.");
+      return;
+    }
+
+    const textToSend = input;
+    setInput(""); //limpiar input visualmente rapido
+
+    try {
+      let convId = conversationIdRef.current;
+
+      //si no existe conversacion, la creamos(primera vez)
+      if (!convId) {
+        const { data: newConv, error: createError } = await supabase
+          .from('conversations')
+          .insert([
+            { user_1: currentUserRef.current, user_2: ownerId }
+          ])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        convId = newConv.id;
+        conversationIdRef.current = convId;
+        subscribeToMessages(convId); //nos suscribimos a la nueva sala
+      }
+
+      //insertar mensaje en la base de datos
+      const { data: msgData, error: msgError } = await supabase
+        .from('messages')
+        .insert([
+          {
+            conversation_id: convId,
+            sender_id: currentUserRef.current,
+            content: textToSend,
+          }
+        ])
+        .select()
+        .single();
+
+      if (msgError) throw msgError;
+
+      // agregamos a la lista local
+      setMessages((prev) => [msgData, ...prev]);
+
+    } catch (err) {
+      console.error("Error enviando mensaje:", err);
+      Alert.alert("Error", "Hubo un problema al enviar el mensaje.");
+    }
+  };
+
+  // renderizado de cada burbuja
+  const renderItem = ({ item }) => {
+    // Verificamos si el mensaje es mío comparando IDs
+    const isMyMessage = item.sender_id === currentUserRef.current;
+
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          isMyMessage ? styles.userMessage : styles.systemMessage,
+        ]}
+      >
+        <Text style={isMyMessage ? styles.userText : styles.systemText}>
+          {item.content || item.text}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.mainContainer}>
@@ -77,7 +190,7 @@ export default function Chat({ navigation: navProp, route }) {
           <Ionicons name="arrow-back" size={28} color={colors.botones.textoPrimario} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Pet Finder 🐾</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{chatTitle}</Text>
 
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Image source={{ uri: avatarUri }} style={styles.avatar} />
@@ -127,9 +240,15 @@ export default function Chat({ navigation: navProp, route }) {
             onSubmitEditing={sendMessage}
             returnKeyType="send"
             blurOnSubmit={false}
+            // Deshabilitamos el input si no hay ownerId para evitar intentos de envío
+            editable={!!ownerId}
           />
 
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <TouchableOpacity
+            style={[styles.sendButton, !ownerId && { backgroundColor: '#ccc' }]}
+            onPress={sendMessage}
+            disabled={!ownerId}
+          >
             <Ionicons name="send" size={20} color={colors.botones.textoPrimario} />
           </TouchableOpacity>
         </View>
@@ -179,7 +298,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.fondo.componentes,
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -194,24 +312,23 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     zIndex: 10,
   },
-
   backButton: {
     padding: 8,
     marginRight: 10,
   },
-
   headerTitle: {
     flex: 1,
     color: colors.botones.textoPrimario,
     fontWeight: "bold",
     fontSize: 20,
   },
-
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.fondo.componentes,
+    borderWidth: 1,
+    borderColor: "white",
   },
 
   modalBackground: {
@@ -227,17 +344,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     resizeMode: "cover",
   },
-
   container: {
     flex: 1,
     backgroundColor: colors.fondo.app,
   },
-
   flatListContent: {
     paddingHorizontal: 12,
     paddingVertical: 20,
   },
-
   messageBubble: {
     padding: 12,
     borderRadius: 16,
@@ -245,19 +359,16 @@ const styles = StyleSheet.create({
     maxWidth: "80%",
     elevation: 1,
   },
-
   userMessage: {
     backgroundColor: colors.primarios.indigo,
     alignSelf: "flex-end",
     borderBottomRightRadius: 2,
   },
-
   systemMessage: {
     backgroundColor: colors.fondo.app,
     alignSelf: "flex-start",
     borderBottomLeftRadius: 2,
   },
-
   userText: {
     fontSize: 16,
     color: colors.botones.textoPrimario,
@@ -267,7 +378,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.texto.primario,
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -277,7 +387,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: colors.bordes.primario,
   },
-
   input: {
     flex: 1,
     height: 50,
@@ -290,7 +399,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     color: colors.texto.primario,
   },
-
   sendButton: {
     backgroundColor: colors.primarios.indigo,
     width: 50,

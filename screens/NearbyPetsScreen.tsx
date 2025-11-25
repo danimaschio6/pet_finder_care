@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, FlatList, Modal, S
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from '@expo/vector-icons';
 import colors from "../data/colors.json";
-import PetCard from "./components//PetCardComponent";
+import PetCard from "./components/PetCardComponent";
 import { supabase } from "../supabase/client/supabaseClient";
 
 import LocationSelectMap from "./components/LocationSelectMap";
@@ -122,21 +122,18 @@ export default function NearbyPetsScreen() {
   const loadPets = async () => {
     try {
       setIsLoading(true);
-      
-      // Construir la query base
+
       let query = supabase
         .from('pets')
         .select('id, name, species, breed, description, location, image_url, status, created_at, latitude, longitude')
         .order('created_at', { ascending: false });
 
-      // Filtrar por estado si no es "Todas"
       if (filtroPerdidas === "Perdidas") {
         query = query.eq('status', 'perdida');
       } else if (filtroPerdidas === "Encontradas") {
         query = query.eq('status', 'encontrada');
       }
 
-      // Filtrar solo con foto si está activado
       if (soloConFoto) {
         query = query.not('image_url', 'is', null);
       }
@@ -149,9 +146,10 @@ export default function NearbyPetsScreen() {
         return;
       }
 
-      // Mapear los datos de Supabase al formato que espera el componente
+
       const mappedPets: IPet[] = (petsData || []).map((pet: any) => ({
         id: pet.id,
+        user_id: pet.owner_id || undefined, // Si es null, pasa a ser undefined
         tipo: pet.species === 'perro' ? 'Perro' : pet.species === 'gato' ? 'Gato' : pet.species,
         nombre: pet.name || 'Sin nombre',
         estado: pet.status === 'perdida' ? 'Perdido' : pet.status === 'encontrada' ? 'Encontrado' : 'Desconocido',
@@ -229,92 +227,40 @@ export default function NearbyPetsScreen() {
   });
 
   return (
-    
     <View style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
           <Text style={styles.headerTitle}>Mascotas Cerca</Text>
       </View>
 
       <View style={styles.container}>
-
-        {/* Filtros */}
-        {/* 
+        {/* FILTROS */}
         <View style={styles.filtros}>
-          {['Perdidas', 'Encontradas'].map((palabraFiltro) => (
-            <TouchableOpacity
-              key={ palabraFiltro }
-              style={[
-                styles.filtroBtn,
-                filtroPerdidas === palabraFiltro && { backgroundColor: colors.botones.primario },
-              ]}
-              onPress={() => setFiltroPerdidas(palabraFiltro)}
-            >
-              <Text style={[
-                styles.filtroText,
-                filtroPerdidas === palabraFiltro && { color: colors.botones.textoPrimario },
-              ]}>
-                { palabraFiltro }
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        </TouchableOpacity><TouchableOpacity style={ styles.filtroBtn }>
-          <Text style={ styles.filtroText}>
-            Filtros.
-          </Text>
-        </TouchableOpacity>
-        */}
-        
-        <View style={styles.filtros}>
-          <TouchableOpacity style={ [styles.botonFiltro, filtroPerdidas === "Todas" && styles.botonFiltroActivo] } onPress={() => setFiltroPerdidas("Todas")}> 
-            <Text style={ [styles.filtroText, filtroPerdidas === "Todas" && styles.filtroActivoText] }>
-              Todas
-            </Text>
+          <TouchableOpacity style={[styles.botonFiltro, filtroPerdidas === "Todas" && styles.botonFiltroActivo]} onPress={() => setFiltroPerdidas("Todas")}>
+            <Text style={[styles.filtroText, filtroPerdidas === "Todas" && styles.filtroActivoText]}>Todas</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={ [styles.botonFiltro, filtroPerdidas === "Perdidas" && styles.botonFiltroActivo] } onPress={() => setFiltroPerdidas("Perdidas")}> 
-            <Text style={ [styles.filtroText, filtroPerdidas === "Perdidas" && styles.filtroActivoText] }>
-              Perdidas
-            </Text>
+          <TouchableOpacity style={[styles.botonFiltro, filtroPerdidas === "Perdidas" && styles.botonFiltroActivo]} onPress={() => setFiltroPerdidas("Perdidas")}>
+            <Text style={[styles.filtroText, filtroPerdidas === "Perdidas" && styles.filtroActivoText]}>Perdidas</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={ [styles.botonFiltro, filtroPerdidas === "Encontradas" && styles.botonFiltroActivo] } onPress={() => setFiltroPerdidas("Encontradas")}>
-            <Text style={ [styles.filtroText, filtroPerdidas === "Encontradas" && styles.filtroActivoText] }>
-              Encontradas
-            </Text>
+          <TouchableOpacity style={[styles.botonFiltro, filtroPerdidas === "Encontradas" && styles.botonFiltroActivo]} onPress={() => setFiltroPerdidas("Encontradas")}>
+            <Text style={[styles.filtroText, filtroPerdidas === "Encontradas" && styles.filtroActivoText]}>Encontradas</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={ styles.botonFiltro } onPress={() => setModalFiltrosVisible(true)}>
-            <Text style={ styles.filtroText }>
-              <Ionicons name="options-outline" size={22} color= {colors.botones.textoSecundario}/>
+          <TouchableOpacity style={styles.botonFiltro} onPress={() => setModalFiltrosVisible(true)}>
+            <Text style={styles.filtroText}>
+              <Ionicons name="options-outline" size={22} color={colors.botones.textoSecundario} />
             </Text>
           </TouchableOpacity>
 
-          <Modal
-            animationType="slide"
-            transparent={true}
-            visible={!!modalFiltrosVisible}
-            onRequestClose={() => setModalFiltrosVisible(false)}
-          >
+          <Modal animationType="slide" transparent={true} visible={!!modalFiltrosVisible} onRequestClose={() => setModalFiltrosVisible(false)}>
             <View style={styles.modalOverlay}>
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Opciones de Filtrado</Text>
-
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>Solo con foto</Text>
-                  <Switch
-                    value={soloConFoto}
-                    onValueChange={setSoloConFoto}
-                    thumbColor={soloConFoto ? colors.primarios.indigo : "#f4f3f4"}
-                    trackColor={{ false: "#d1d5db", true: colors.primarios.indigo }}
-                  />
+                  <Switch value={soloConFoto} onValueChange={setSoloConFoto} thumbColor={soloConFoto ? colors.primarios.indigo : "#f4f3f4"} trackColor={{ false: "#d1d5db", true: colors.primarios.indigo }} />
                 </View>
-
                 <View style={styles.switchRow}>
                   <Text style={styles.switchLabel}>Menos de 5 km</Text>
-                  <Switch
-                    value={menosDe5km}
-                    onValueChange={setMenosDe5km}
-                    thumbColor={menosDe5km ? colors.primarios.indigo : "#f4f3f4"}
-                    trackColor={{ false: "#d1d5db", true: colors.primarios.indigo }}
-                  />
+                  <Switch value={menosDe5km} onValueChange={setMenosDe5km} thumbColor={menosDe5km ? colors.primarios.indigo : "#f4f3f4"} trackColor={{ false: "#d1d5db", true: colors.primarios.indigo }} />
                 </View>
 
                 <TouchableOpacity
@@ -328,8 +274,7 @@ export default function NearbyPetsScreen() {
           </Modal>
 
         </View>
-        
-        {/* Buscador */}
+
         <TextInput
           style={styles.input}
           placeholder='Buscar por raza, color, etc.'
@@ -401,7 +346,6 @@ export default function NearbyPetsScreen() {
         ): isLoading ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 50 }}>
             <ActivityIndicator size="large" color={colors.primarios.indigo} />
-            <Text style={{ marginTop: 10, color: colors.texto.secundario }}>Cargando mascotas...</Text>
           </View>
         ) : (
           <FlatList
@@ -424,8 +368,8 @@ export default function NearbyPetsScreen() {
             onRefresh={loadPets}
           />
         )}
-        </View>
       </View>
+    </View>
   );
 }
 

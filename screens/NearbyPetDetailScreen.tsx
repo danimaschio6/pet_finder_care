@@ -47,15 +47,21 @@ export default function NearbyPetDetailScreen() {
                 <Text style={styles.headerTitle}>Detalles de Mascota</Text>
                 <View style={styles.backButton} />
             </View>
+
             <View style={styles.container}>
-                <ScrollView style={styles.container}>
+                <ScrollView
+                    style={styles.scrollContainer}
+                    contentContainerStyle={{ paddingBottom: 40 }}
+                    showsVerticalScrollIndicator={false}
+                >
                     <Text style={styles.titulo}>{mascota.nombre}</Text>
+
                     <Text style={styles.estado}>
                         Estado:{" "}
                         <Text style={{
-                        color : mascota.estado === "Perdido" ? colors.estado.perdido.base : colors.estado.encontrado.base,
-                        }}
-                        >
+                            color: mascota.estado === "Perdido" ? colors.estado.perdido.base : colors.estado.encontrado.base,
+                            fontWeight: 'bold'
+                        }}>
                             {mascota.estado}
                         </Text>
                     </Text>
@@ -93,6 +99,23 @@ export default function NearbyPetDetailScreen() {
                     
             </View>
 
+                    <View style={styles.mockMapa}>
+                        <Text style={styles.textMapa}>De grande quiero ser un mapa.</Text>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.contactButton}
+                        onPress={handleContact}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="chatbubble-ellipses-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
+                        <Text style={styles.contactButtonText}>
+                            Contactar Dueño
+                        </Text>
+                    </TouchableOpacity>
+
+                </ScrollView>
+            </View>
         </View>
     );
 }
@@ -103,7 +126,7 @@ const styles = StyleSheet.create({
         backgroundColor: colors.fondo.app,
         paddingHorizontal: 0,
         paddingTop: 0,
-        paddingBottom: 50,
+        paddingBottom: 20,
     },
     headerTitle: {
         fontSize: 17,
