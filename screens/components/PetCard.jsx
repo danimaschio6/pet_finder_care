@@ -12,38 +12,28 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../../data/colors.json";
 
-// Animación del acordeón (Android fix)
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 const PetCard = ({
   pet,
-  onPress,         // Navegar a VerMascota
-  onEdit,          // Editar
-  onAddReminder,   // Recordatorios
-  onViewHistory,   // Historial
+  onPress,
+  onEdit,
+  onAddReminder,
+  onViewHistory,
 }) => {
+
   const [expanded, setExpanded] = useState(false);
 
-  // ----------------------------------------------------
-  // 📌 EDAD → plural automático (1 mes / 2 meses / etc.)
-  // ----------------------------------------------------
   const formatEdad = () => {
     if (!pet.edad_numero || !pet.edad_unidad) return "Edad no registrada";
-
-    const unidad = pet.edad_unidad; // mes / año
     const plural = pet.edad_numero > 1 ? "s" : "";
-
-    return `${pet.edad_numero} ${unidad}${plural}`;
+    return `${pet.edad_numero} ${pet.edad_unidad}${plural}`;
   };
 
-  // ----------------------------------------------------
-  // 📌 Estado reproductivo → castrada / entera si es hembra
-  // ----------------------------------------------------
-  const formatEstadoReproductivo = () => {
+  const formatEstado = () => {
     if (!pet.estado_reproductivo) return "No especificado";
-
     if (pet.sexo === "hembra") {
       if (pet.estado_reproductivo === "castrado") return "castrada";
       if (pet.estado_reproductivo === "entero") return "entera";
@@ -51,36 +41,34 @@ const PetCard = ({
     return pet.estado_reproductivo;
   };
 
-  // ----------------------------------------------------
-  // 📌 Foto o inicial del nombre
-  // ----------------------------------------------------
+  // 🔥 FOTO DE LA MASCOTA — ARREGLADO Y OPTIMIZADO
   const renderPhoto = () => {
-    if (pet.foto_url) {
-      return <Image source={{ uri: pet.foto_url }} style={styles.petPhoto} />;
+    if (pet.foto_url && typeof pet.foto_url === "string") {
+      return (
+        <Image
+          source={{ uri: pet.foto_url }}
+          style={styles.petPhoto}
+          resizeMode="cover"
+        />
+      );
     }
 
     return (
       <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>{pet.nombre?.charAt(0)?.toUpperCase()}</Text>
+        <Text style={styles.avatarText}>
+          {pet.nombre?.charAt(0)?.toUpperCase() || "?"}
+        </Text>
       </View>
     );
   };
 
-  // ----------------------------------------------------
-  // 📌 Toggle Expand — Animación
-  // ----------------------------------------------------
   const toggleExpand = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded(!expanded);
   };
 
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={onPress}
-      activeOpacity={0.9}
-    >
-      {/* ----------------- ROW PRINCIPAL ----------------- */}
+    <TouchableOpacity style={styles.card} activeOpacity={0.9} onPress={onPress}>
       <View style={styles.row}>
         {renderPhoto()}
 
@@ -91,49 +79,36 @@ const PetCard = ({
             {pet.especie} · {pet.raza || "Sin raza"} · {formatEdad()}
           </Text>
 
-          {/* CHIPS: Sexo + Estado reproductivo */}
           <View style={{ flexDirection: "row", marginTop: 6 }}>
             <View style={styles.chipSmall}>
-              <Text style={styles.chipText}>{pet.sexo || "?"}</Text>
+              <Text style={styles.chipText}>{pet.sexo}</Text>
             </View>
 
             <View style={[styles.chipSmall, { marginLeft: 6 }]}>
-              <Text style={styles.chipText}>{formatEstadoReproductivo()}</Text>
+              <Text style={styles.chipText}>{formatEstado()}</Text>
             </View>
           </View>
         </View>
 
-        {/* ✏ EDITAR */}
         <TouchableOpacity onPress={onEdit}>
           <Ionicons name="create-outline" size={22} color={colors.primarios.indigo} />
         </TouchableOpacity>
       </View>
 
-      {/* ----------------- BOTÓN EXPANDIR ----------------- */}
       <TouchableOpacity style={styles.moreButton} onPress={toggleExpand}>
         <Text style={styles.moreButtonText}>
           {expanded ? "Ocultar detalles" : "Ver más detalles"}
         </Text>
       </TouchableOpacity>
 
-      {/* ----------------- CONTENIDO EXPANDIBLE ----------------- */}
       {expanded && (
         <View style={styles.expandBox}>
-          <Text style={styles.extraItem}>
-            Pelaje: {pet.pelaje || "No registrado"}
-          </Text>
-
-          <Text style={styles.extraItem}>
-            Sexo: {pet.sexo || "No registrado"}
-          </Text>
-
-          <Text style={styles.extraItem}>
-            Estado reproductivo: {formatEstadoReproductivo()}
-          </Text>
+          <Text style={styles.extraItem}>Pelaje: {pet.pelaje || "No registrado"}</Text>
+          <Text style={styles.extraItem}>Sexo: {pet.sexo}</Text>
+          <Text style={styles.extraItem}>Estado reproductivo: {formatEstado()}</Text>
         </View>
       )}
 
-      {/* ----------------- ACCIONES SECUNDARIAS ----------------- */}
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.smallButton} onPress={onAddReminder}>
           <Ionicons name="notifications" size={18} color="#fff" />
@@ -157,10 +132,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     marginBottom: 20,
-    shadowColor: colors.varios.sombra,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
     elevation: 4,
   },
 
@@ -169,23 +140,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
+  // 🔥 Más grande, redondo y bonito
   petPhoto: {
-    width: 70,
-    height: 70,
-    borderRadius: 14,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    backgroundColor: "#ddd",
   },
 
   avatarPlaceholder: {
-    width: 70,
-    height: 70,
-    borderRadius: 14,
+    width: 80,
+    height: 80,
+    borderRadius: 16,
     backgroundColor: "#d1d5db",
     justifyContent: "center",
     alignItems: "center",
   },
 
   avatarText: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "bold",
     color: "#444",
   },
@@ -210,7 +183,7 @@ const styles = StyleSheet.create({
   },
 
   chipText: {
-    color: "white",
+    color: "#fff",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -234,8 +207,8 @@ const styles = StyleSheet.create({
 
   extraItem: {
     fontSize: 14,
-    color: colors.texto.primario,
     marginBottom: 4,
+    color: colors.texto.primario,
   },
 
   actionsRow: {
