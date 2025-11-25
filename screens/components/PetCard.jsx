@@ -27,10 +27,21 @@ const PetCard = ({
   const [expanded, setExpanded] = useState(false);
 
   const formatEdad = () => {
-    if (!pet.edad_numero || !pet.edad_unidad) return "Edad no registrada";
-    const plural = pet.edad_numero > 1 ? "s" : "";
-    return `${pet.edad_numero} ${pet.edad_unidad}${plural}`;
-  };
+  const n = pet.edad_numero;
+  const u = pet.edad_unidad;
+
+  if (!n || !u) return "Edad no registrada";
+
+  if (u === "mes") {
+    return n === 1 ? "1 mes" : `${n} meses`;
+  }
+
+  if (u === "año") {
+    return n === 1 ? "1 año" : `${n} años`;
+  }
+
+  return "Edad no registrada";
+};
 
   const formatEstado = () => {
     if (!pet.estado_reproductivo) return "No especificado";
@@ -103,10 +114,8 @@ const PetCard = ({
 
       {expanded && (
         <View style={styles.expandBox}>
-          <Text style={styles.extraItem}>Pelaje: {pet.pelaje || "No registrado"}</Text>
-          <Text style={styles.extraItem}>Sexo: {pet.sexo}</Text>
-          <Text style={styles.extraItem}>Estado reproductivo: {formatEstado()}</Text>
-        </View>
+          <Text style={styles.extraItem}>Pelaje: {pet.pelaje || "No registrado"}</Text>  
+       </View>
       )}
 
       <View style={styles.actionsRow}>
