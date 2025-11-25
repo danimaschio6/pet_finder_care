@@ -4,6 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './supabase/client/supabaseClient';
+import * as Notifications from "expo-notifications";
+
+// 🔔 CONFIG GLOBAL DE NOTIFICACIONES
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 // Importa todas las pantallas
 import LoginScreen from './screens/LoginScreen';
@@ -14,6 +24,11 @@ import MisMascotasScreen from './screens/MisMascotasScreen';
 import CrearMascotaScreen from './screens/CrearMascotaScreen';
 import VerMascotaScreen from './screens/VerMascotaScreen';
 import EditarMascotaScreen from './screens/EditarMascotaScreen'; 
+import VerHistorialScreen from './screens/VerHistorialScreen';
+import AgregarHistorialScreen from './screens/AgregarHistorialScreen';
+import EditarHistorialScreen from './screens/EditarHistorialScreen';
+import RecordatoriosScreen from './screens/RecordatoriosScreen';
+import ReminderModal from './screens/ReminderModal';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
@@ -107,6 +122,15 @@ const App = () => {
               <Stack.Screen name="CrearMascota" component={CrearMascotaScreen} />
               <Stack.Screen name="VerMascota" component={VerMascotaScreen} />
               <Stack.Screen name="EditarMascota" component={EditarMascotaScreen} />
+              <Stack.Screen name="VerHistorial" component={VerHistorialScreen} />
+              <Stack.Screen name="AgregarHistorial" component={AgregarHistorialScreen} />
+              <Stack.Screen name="EditarHistorial" component={EditarHistorialScreen} />
+              <Stack.Screen name="Recordatorios" component={RecordatoriosScreen} />
+              <Stack.Screen
+               name="ReminderModal"
+               component={ReminderModal}
+               options={{ presentation: "modal" }}
+             />
               <Stack.Screen name="Mensajes" component={Chat} />
             </>
           ) : (

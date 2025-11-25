@@ -14,12 +14,20 @@ import FullScreenImageViewer from './components/FullScreenImageViewer';
 
 // 📌 Formateo reproducido a nivel PRO
 const formatEdad = (pet) => {
-  if (!pet.edad_numero || !pet.edad_unidad) return "—";
+  const n = pet.edad_numero;
+  const u = pet.edad_unidad;
 
-  const unidad = pet.edad_unidad === "mes" ? "mes" : "año";
-  const plural = pet.edad_numero > 1 ? "es" : "";
+  if (!n || !u) return "—";
 
-  return `${pet.edad_numero} ${unidad}${plural}`;
+  if (u === "mes") {
+    return n === 1 ? "1 mes" : `${n} meses`;
+  }
+
+  if (u === "año") {
+    return n === 1 ? "1 año" : `${n} años`;
+  }
+
+  return "—";
 };
 
 const formatEstadoReproductivo = (pet) => {
