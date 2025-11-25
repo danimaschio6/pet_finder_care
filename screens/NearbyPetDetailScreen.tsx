@@ -86,10 +86,11 @@ export default function NearbyPetDetailScreen() {
                     </View>
                      */}
                     
-                    <PetMap {...coordenadas} />
+                    <View style={{ height: 250, borderRadius: 10, overflow: "hidden", marginVertical: 16 }}>
+                        <PetMap {...coordenadas} />
+                    </View>
                     
                 </ScrollView>
-                    
                 
             </View>
 
