@@ -59,7 +59,7 @@ const PetFormModal = ({ visible, onClose, pets, setPets, editingPet, setEditingP
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true}>
+    <Modal visible={!!visible} animationType="slide" transparent={true}>
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.modalTitle}>{editingPet ? "Editar Mascota" : "Nueva Mascota"}</Text>
