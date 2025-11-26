@@ -186,7 +186,7 @@ const DashboardScreen = ({ onLogout }) => {
           <TouchableOpacity 
             style={[styles.quickAccessButton, { backgroundColor: '#F3E5F5' }]} 
             //onPress={() => handleComingSoon()}
-            onPress={() => navigation.navigate("Shelters")}
+            onPress={() => navigation.navigate("Refugios")}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="map-marker-radius" size={28} color="#9C27B0" />

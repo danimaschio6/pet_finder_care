@@ -35,6 +35,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 import Chat from './screens/Chat';
+import NearbySheltersScreen from './screens/NearbySheltersScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -126,6 +127,7 @@ const App = () => {
               <Stack.Screen name="AgregarHistorial" component={AgregarHistorialScreen} />
               <Stack.Screen name="EditarHistorial" component={EditarHistorialScreen} />
               <Stack.Screen name="Recordatorios" component={RecordatoriosScreen} />
+              <Stack.Screen name="Refugios" component={NearbySheltersScreen} />
               <Stack.Screen
                name="ReminderModal"
                component={ReminderModal}
