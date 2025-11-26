@@ -194,7 +194,7 @@ const DashboardScreen = ({ onLogout }) => {
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.quickAccessButton, { backgroundColor: '#FFF3E0' }]} 
-            onPress={() => navigation.navigate('Mensajes')}
+            onPress={() => navigation.navigate('BandejaEntrada')}
             activeOpacity={0.7}
           >
             <Ionicons name="chatbubble-ellipses-outline" size={28} color="#FF9800" />
