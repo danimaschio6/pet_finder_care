@@ -11,8 +11,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../../data/colors.json";
-import { reportAsLost } from "../supabase/services/reportPetService";
-import { Alert } from "react-native";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -130,23 +128,9 @@ const PetCard = ({
           <Ionicons name="medkit" size={18} color="#fff" />
           <Text style={styles.smallButtonText}>Historial</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.reportButton} onPress={handleReportLost}>
-  <Text style={styles.reportButtonText}>Reportar como Perdida</Text>
-</TouchableOpacity>
-
-
       </View>
     </TouchableOpacity>
-    
   );
-};
-const handleReportLost = async () => {
-  try {
-    await reportAsLost(pet);
-    Alert.alert("✅ Reportado", "La mascota fue publicada como perdida.");
-  } catch (error) {
-    Alert.alert("Error", "No se pudo reportar la mascota.");
-  }
 };
 
 
@@ -258,22 +242,4 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
   },
-  reportButton: {
-  backgroundColor: colors.estado.perdido.base,
-  paddingVertical: 10,
-  paddingHorizontal: 14,
-  borderRadius: 12,
-  marginTop: 8,
-  alignItems: "center",
-  flexDirection: "row",
-  justifyContent: "center",
-},
-
-reportButtonText: {
-  color: "#fff",
-  fontWeight: "700",
-  fontSize: 13,
-},
-
-
 });

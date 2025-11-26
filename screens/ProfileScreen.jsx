@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../data/colors.json';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -12,62 +12,95 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 
   // ✅ Cargar perfil
   const loadProfile = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user) return;
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      if (!user?.user) return;
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.user.id)
-      .single();
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.user.id)
+        .single();
 
-    setProfile(data);
+      setProfile(data);
+    } catch (err) {
+      console.log("❌ Error cargando perfil:", err.message);
+    }
   };
 
   useEffect(() => {
     loadProfile();
   }, []);
 
+  // ✅ Opciones de avatar
+  const handleAvatarOptions = () => {
+    if (profile?.avatar_url) {
+      Alert.alert(
+        "Foto de perfil",
+        "¿Qué querés hacer?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          { text: "Cambiar", onPress: handleChangeAvatar },
+          { text: "Eliminar", style: "destructive", onPress: handleDeleteAvatar },
+        ]
+      );
+    } else {
+      handleChangeAvatar();
+    }
+  };
+
   // ✅ Cambiar avatar
   const handleChangeAvatar = async () => {
-    const { data } = await supabase.auth.getUser();
-    const userId = data.user.id;
+    try {
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user.id;
 
-    const avatarUrl = await uploadAvatar(userId);
+      const avatarUrl = await uploadAvatar(userId);
+      if (!avatarUrl) return;
 
-    if (avatarUrl) {
       await supabase
         .from("profiles")
         .update({ avatar_url: avatarUrl })
         .eq("id", userId);
 
       loadProfile();
+    } catch (err) {
+      console.log("❌ Error cambiando avatar:", err.message);
+      Alert.alert("Error", "No se pudo cambiar la imagen.");
     }
   };
 
   // ✅ Eliminar avatar
   const handleDeleteAvatar = async () => {
-    const { data } = await supabase.auth.getUser();
-    const userId = data.user.id;
+    try {
+      const { data } = await supabase.auth.getUser();
+      const userId = data.user.id;
 
-    await deleteAvatar(userId);
-    loadProfile();
+      await deleteAvatar(userId);
+      loadProfile();
+    } catch (err) {
+      console.log("❌ Error eliminando avatar:", err.message);
+      Alert.alert("Error", "No se pudo eliminar la imagen.");
+    }
   };
 
   return (
     <View style={styles.container}>
+      
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.title}>Mi Perfil</Text>
       </View>
 
-      {/* CONTENT */}
       <View style={styles.content}>
 
         {/* AVATAR */}
-        <TouchableOpacity style={styles.avatarBox} onPress={handleChangeAvatar}>
+        <View style={styles.avatarWrapper}>
           {profile?.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+            <Image
+              source={{ uri: `${profile.avatar_url}?t=${Date.now()}` }}  // ✅ FIX DEFINITIVO DE CACHÉ
+              style={styles.avatar}
+            />
           ) : (
             <MaterialCommunityIcons
               name="account-circle"
@@ -75,16 +108,14 @@ const ProfileScreen = ({ navigation, onLogout }) => {
               color={colors.texto.secundario}
             />
           )}
-          <Text style={styles.changePhotoText}>Cambiar foto</Text>
-        </TouchableOpacity>
 
-        {profile?.avatar_url && (
-          <TouchableOpacity onPress={handleDeleteAvatar}>
-            <Text style={styles.deletePhotoText}>Eliminar foto</Text>
+          {/* LÁPIZ */}
+          <TouchableOpacity style={styles.editAvatarBtn} onPress={handleAvatarOptions}>
+            <MaterialCommunityIcons name="pencil" size={20} color="#fff" />
           </TouchableOpacity>
-        )}
+        </View>
 
-        {/* DATOS USUARIO */}
+        {/* DATOS */}
         {profile && (
           <View style={styles.userDataBox}>
             <Text style={styles.userText}>
@@ -95,7 +126,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
           </View>
         )}
 
-        {/* BOTÓN MIS MASCOTAS */}
+        {/* MIS MASCOTAS */}
         <TouchableOpacity
           style={styles.profileButton}
           onPress={() => navigation.navigate('MisMascotas')}
@@ -106,7 +137,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
           </View>
         </TouchableOpacity>
 
-        {/* BOTÓN LOGOUT */}
+        {/* LOGOUT */}
         <TouchableOpacity
           style={[styles.profileButton, styles.logoutButton]}
           onPress={onLogout}
@@ -127,6 +158,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.fondo.app },
+
   header: {
     paddingBottom: 16,
     paddingHorizontal: 20,
@@ -134,28 +166,31 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20
   },
+
   title: {
     fontSize: 28,
     fontWeight: '700',
     color: colors.botones.textoPrimario,
     textAlign: 'center'
   },
+
   content: { flex: 1, paddingTop: 24, paddingHorizontal: 20 },
 
-  avatarBox: { alignItems: "center", marginBottom: 10 },
-  avatar: { width: 110, height: 110, borderRadius: 55 },
-
-  changePhotoText: {
-    marginTop: 8,
-    color: colors.primarios.indigo,
-    fontWeight: "600"
+  avatarWrapper: {
+    alignItems: "center",
+    marginBottom: 20,
+    position: "relative"
   },
 
-  deletePhotoText: {
-    textAlign: "center",
-    color: colors.estado.perdido.base,
-    fontWeight: "600",
-    marginBottom: 20
+  avatar: { width: 110, height: 110, borderRadius: 55 },
+
+  editAvatarBtn: {
+    position: "absolute",
+    bottom: 0,
+    right: "35%",
+    backgroundColor: colors.primarios.indigo,
+    borderRadius: 20,
+    padding: 6
   },
 
   userDataBox: { alignItems: "center", marginBottom: 24 },
