@@ -29,10 +29,10 @@ export default function InboxScreen() {
             const { data, error } = await supabase
                 .from('conversations')
                 .select(`
-          id,
-          user_1:profiles!user_1(id, first_name, last_name, avatar_url),
-          user_2:profiles!user_2(id, first_name, last_name, avatar_url)
-        `);
+                    id, 
+                    user_1:profiles!user_1(id, first_name, last_name, avatar_url), 
+                    user_2:profiles!user_2(id, first_name, last_name, avatar_url)
+                    `);
 
             if (error) throw error;
 

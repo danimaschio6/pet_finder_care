@@ -19,10 +19,10 @@ interface IPet {
     estado: string
     descripcion: string
     detalle: string
+    idDuenio?: number
     distancia: string
     latitud?: number
     longitud?: number
-    user_id?: string
 }
 
 export default function NearbyPetDetailScreen() {
@@ -50,7 +50,7 @@ export default function NearbyPetDetailScreen() {
             return;
         }
 
-        navigation.navigate('Mensajes', { ownerId: mascota.user_id, petName: mascota.nombre, avatarUrl: mascota.image_url, });
+        navigation.navigate('Mensajes', { ownerId: mascota.idDuenio, petName: mascota.nombre, avatarUrl: mascota.image_url, });
     };
 
     return (

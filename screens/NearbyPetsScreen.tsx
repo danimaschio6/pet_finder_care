@@ -16,6 +16,7 @@ interface IPet {
   estado: string
   descripcion: string
   detalle: string
+  idDuenio?: number
   distancia: string
   latitud?: number
   longitud?: number
@@ -126,7 +127,7 @@ export default function NearbyPetsScreen() {
       // Construir la query base
       let query = supabase
         .from('pets')
-        .select('id, name, species, breed, description, location, image_url, status, created_at, latitude, longitude')
+        .select('id, name, species, breed, description, location, owner_id, image_url, status, created_at, latitude, longitude')
         .order('created_at', { ascending: false });
 
       // Filtrar por estado si no es "Todas"
@@ -157,6 +158,7 @@ export default function NearbyPetsScreen() {
         estado: pet.status === 'perdida' ? 'Perdido' : pet.status === 'encontrada' ? 'Encontrado' : 'Desconocido',
         descripcion: pet.description || 'Sin descripción',
         detalle: pet.location ? `📍 ${pet.location}` : '📍 Ubicación no especificada',
+        idDuenio: pet.owner_id,
         distancia: 'Distancia no disponible', // Por ahora, se puede calcular después con geolocalización
         image_url: pet.image_url || null, // Incluir la URL de la imagen        
         // coordenadas
