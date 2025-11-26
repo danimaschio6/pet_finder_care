@@ -108,7 +108,7 @@ export default function NearbySheltersScreen() {
           shelter.longitude
         );
 
-        // Descarta refugios a más de 10 km
+        // Si el refugio esta a mas de 10km pasa al siguiente
         if (distanciaKm > 10) continue;
 
         // Obtener dirección inversa
@@ -116,15 +116,15 @@ export default function NearbySheltersScreen() {
           latitude: shelter.latitude,
           longitude: shelter.longitude,
         });
-
+        
         let ubicacion = "Ubicación desconocida";
-
+        
         if (address.length > 0) {
           const { street, name } = address[0];
           if (street && name) ubicacion = `${street} ${name}`;
           else if (street) ubicacion = street;
         }
-
+        
         processedShelters.push({
           id: shelter.id,
           nombre: shelter.name,
@@ -210,20 +210,20 @@ export default function NearbySheltersScreen() {
           longitudeDelta: 0.05,
         }}
       >
-        {/* Marcador del usuario */}
+        {/* Marcador de usuario */}
         <Marker
           coordinate={{ latitude: userLocation.lat, longitude: userLocation.long }}
           title="Tú"
           pinColor="blue"
         />
 
-        {/* Marcadores de los refugios */}
+        {/* Marcadores de refugios */}
         {shelters.map((refugio) => (
           <Marker
             key={refugio.id}
             coordinate={{ latitude: refugio.latitud, longitude: refugio.longitud }}
             title={refugio.nombre}
-            description={ refugio.distancia+" - "+refugio.ubicacion }
+            description={ refugio.distancia +" - "+ refugio.ubicacion }
             pinColor="red"
           />
         ))}

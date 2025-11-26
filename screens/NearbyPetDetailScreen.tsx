@@ -15,7 +15,7 @@ interface ICoords {
 interface IPet {
     id: string
     tipo: string
-    nombre: string
+    nombre?: string
     estado: string
     descripcion: string
     detalle: string
@@ -67,7 +67,7 @@ export default function NearbyPetDetailScreen() {
                 <View style={styles.backButton} />
             </View>
             <View style={styles.container}>
-                <ScrollView style={styles.container}>
+                <ScrollView style={[styles.container, {paddingBottom: 10}]}>
                     <Text style={styles.titulo}>{mascota.nombre}</Text>
                     <Text style={styles.estado}>
                         Estado:{" "}
@@ -116,7 +116,7 @@ export default function NearbyPetDetailScreen() {
                     >
                         <Ionicons name="chatbubble-ellipses-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
                         <Text style={styles.contactButtonText}>
-                            Contactar Dueño
+                            Contactar.
                         </Text>
                     </TouchableOpacity>
                 </ScrollView>
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginTop: 10,
-        marginBottom: 20,
+        marginBottom: 80,
         elevation: 4,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
