@@ -15,6 +15,8 @@ import NearbyPetsScreen from './NearbyPetsScreen';
 import NearbyPetDetailScreen from './NearbyPetDetailScreen';
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+//import NearbySheltersScreen from "../screens/NearbySheltersScreen";
+
 const Tab = createBottomTabNavigator();
 
 
@@ -96,6 +98,7 @@ const TabNavigator = ({ onLogout }) => {
       <Tab.Screen name="Perfil">
         {props => <ProfileScreen {...props} onLogout={onLogout} />}
       </Tab.Screen>
+      
     </Tab.Navigator>
   );
 };
