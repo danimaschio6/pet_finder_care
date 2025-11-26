@@ -1,13 +1,52 @@
-// ProfileScreen.js
+// ProfileScreen.jsx
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '../data/colors.json';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { supabase } from '../supabase/client/supabaseClient';
+import { uploadAvatar } from '../supabase/services/uploadAvatarService';
 
 const ProfileScreen = ({ navigation, onLogout }) => {
   const insets = useSafeAreaInsets();
+  const [profile, setProfile] = useState(null);
+
+  // ✅ Cargar perfil del usuario
+  const loadProfile = async () => {
+    const { data: user } = await supabase.auth.getUser();
+
+    if (!user?.user) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.user.id)
+      .single();
+
+    setProfile(data);
+  };
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  // ✅ Cambiar avatar
+  const handleChangeAvatar = async () => {
+    const { data } = await supabase.auth.getUser();
+    const userId = data.user.id;
+
+    const avatarUrl = await uploadAvatar(userId);
+
+    if (avatarUrl) {
+      await supabase
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", userId);
+
+      loadProfile();
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -18,6 +57,31 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 
       {/* CONTENT */}
       <View style={styles.content}>
+
+        {/* AVATAR */}
+        <TouchableOpacity style={styles.avatarBox} onPress={handleChangeAvatar}>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
+          ) : (
+            <MaterialCommunityIcons
+              name="account-circle"
+              size={100}
+              color={colors.texto.secundario}
+            />
+          )}
+          <Text style={styles.changePhotoText}>Cambiar foto</Text>
+        </TouchableOpacity>
+
+        {/* DATOS USUARIO */}
+        {profile && (
+          <View style={styles.userDataBox}>
+            <Text style={styles.userText}>
+              {profile.first_name} {profile.last_name}
+            </Text>
+            <Text style={styles.userSubText}>{profile.email}</Text>
+            <Text style={styles.userSubText}>{profile.city}</Text>
+          </View>
+        )}
 
         {/* Botón: Mis Mascotas */}
         <TouchableOpacity
@@ -82,6 +146,35 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     paddingHorizontal: 20,
   },
+
+  avatarBox: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+  },
+  changePhotoText: {
+    marginTop: 8,
+    color: colors.primarios.indigo,
+    fontWeight: "600",
+  },
+
+  userDataBox: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  userText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: colors.texto.primario,
+  },
+  userSubText: {
+    color: colors.texto.secundario,
+  },
+
   profileButton: {
     flexDirection: 'row',
     alignItems: 'center',
