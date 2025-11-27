@@ -196,6 +196,11 @@ const DashboardScreen = ({ onLogout }) => {
             <Ionicons name="chatbubble-ellipses-outline" size={24} color="#F8E71C" />
             <Text style={styles.quickAccessText}>Mensajes</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#6ac1ffff' }]} onPress={() => navigation.navigate('Noticias')}>
+            <MaterialCommunityIcons name="newspaper" size={24} color="#0400e4ff"/>
+            <Text style={styles.quickAccessText}>Noticias</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>

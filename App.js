@@ -32,7 +32,7 @@ import ReminderModal from './screens/ReminderModal';
 import InboxScreen from './screens/InboxScreen';
 import NearbySheltersScreen from './screens/NearbySheltersScreen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
+import NewsScreen from './screens/NewsScreen';
 
 
 
@@ -137,6 +137,7 @@ const App = () => {
               <Stack.Screen name="BandejaEntrada" component={InboxScreen} />
               <Stack.Screen name="Mensajes" component={Chat} />
               <Stack.Screen name="Refugios" component={NearbySheltersScreen} />
+              <Stack.Screen name="Noticias" component={NewsScreen} />
               
             </>
           ) : (
