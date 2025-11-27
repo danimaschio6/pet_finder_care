@@ -20,6 +20,8 @@ export const reportAsLost = async (pet) => {
         owner_id: userId,
         image_url: pet.foto_url,
         status: "perdida",
+        latitude: pet.latitud,
+        longitude: pet.longitud,
       },
     ]);
 

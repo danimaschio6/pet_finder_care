@@ -348,14 +348,14 @@ export default function NearbyPetsScreen() {
         ) }
 
         {/* botón modal mapa */}
-            <View style={styles.locationBtnContainer}>
-            <TouchableOpacity style={styles.locationBtn} onPress={() => setModalMapaEleccionVisible(true)}>
-              <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
+        <View style={styles.locationBtnContainer}>
+          <TouchableOpacity style={styles.locationBtn} onPress={() => setModalMapaEleccionVisible(true)}>
+            <Text style={{ color: "white", textAlign: "center", fontWeight: "bold" }}>
               <Ionicons name="map-outline" size={18} color= {colors.botones.secundario}/>
               Definir ubicación
             </Text>
-            </TouchableOpacity>
-          </View>
+          </TouchableOpacity>
+        </View>
         
 
         {/*modal mapa */}
@@ -552,7 +552,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.botones.primario,
     marginTop: 2,
-  },modalOverlay: {
+  },
+  modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",

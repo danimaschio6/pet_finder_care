@@ -8,12 +8,15 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Modal
 } from 'react-native';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import colors from '../data/colors.json';
 import FullScreenImageViewer from './components/FullScreenImageViewer';
 import { reportAsLost, markAsFound } from '../supabase/services/reportPetService';
 import { supabase } from '../supabase/client/supabaseClient';
+import PetMap from './components/PetMap';
+import LocationSelectMap from './components/LocationSelectMap';
 
 /* ================= FORMATEADORES (NO TOCADOS) ================= */
 
@@ -40,6 +43,12 @@ const formatEstadoReproductivo = (pet) => {
 const VerMascotaScreen = ({ route, navigation }) => {
   const { pet } = route.params;
   const [showViewer, setShowViewer] = useState(false);
+
+  
+  const [modalMapa, setModalMapa] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [selectedLatitude, setSelectedLatitude] = useState(null);
+  const [selectedLongitude, setSelectedLongitude] = useState(null);
 
   // ✅ Estado: indica si HAY una publicación perdida en `pets` para esta mascota
   const [publicadoComoPerdido, setPublicadoComoPerdido] = useState(false);
@@ -95,12 +104,24 @@ const VerMascotaScreen = ({ route, navigation }) => {
 
   const handleReportLost = async () => {
     try {
-      await reportAsLost(pet);
+      //await reportAsLost(...pet, {latitud:selectedLatitude , longitud:selectedLongitude });
+      if (!selectedLatitude || !selectedLongitude) {
+        Alert.alert("Ubicación requerida", "Debes seleccionar una ubicación en el mapa.");
+        return;
+      }
+      const petCompleto = {
+        ...pet,
+        latitud: selectedLatitude,
+        longitud: selectedLongitude,
+      };
+      await reportAsLost(petCompleto);
       setPublicadoComoPerdido(true); // ✅ ahora queda guardado en estado
       Alert.alert("✅ Reportado", "La mascota fue publicada como perdida.");
     } catch {
       Alert.alert("Error", "No se pudo reportar la mascota.");
     }
+    //hasta aca estaria
+    cancelSelectionModal();
   };
 
   const confirmMarkAsFound = () => {
@@ -124,6 +145,18 @@ const VerMascotaScreen = ({ route, navigation }) => {
     }
   };
 
+  //subo y cierro modal
+  const confirmSelectionModal = () => {
+    //onLocationSelected(markerPosition.latitude, markerPosition.longitude);
+    confirmReportLost();
+  };
+
+  //limpio states y cierro modal
+  const cancelSelectionModal = () => {
+    setSelectedLatitude(null);
+    setSelectedLongitude(null);
+    setModalMapa(false);
+  };
   /* ================= RENDER ================= */
 
   return (
@@ -181,7 +214,7 @@ const VerMascotaScreen = ({ route, navigation }) => {
         {/* ===== ACCIONES MINI (UI LIMPIA) ===== */}
         <View style={styles.bottomActions}>
           {/* 🔴 SOS SIEMPRE */}
-          <TouchableOpacity style={styles.sosMiniButton} onPress={confirmReportLost}>
+          <TouchableOpacity style={styles.sosMiniButton} onPress={ () => setModalMapa(true)}>
             <Text style={styles.sosMiniText}>SOS</Text>
           </TouchableOpacity>
 
@@ -209,6 +242,74 @@ const VerMascotaScreen = ({ route, navigation }) => {
           onClose={() => setShowViewer(false)}
         />
       )}
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={!!modalMapa}
+        onRequestClose={() => setModalMapa(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Necesitamos que ingrese la ultima ubicacion conocida de su mascota</Text>
+            
+            {/* mapas vista previa */}
+            <View style={styles.mapSection}>
+              {/* mapa alejado — si no hay ubicación seleccionada */}
+              {selectedLatitude === null && selectedLongitude === null ? (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => setShowMap(true)}
+                  style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+                >
+                  <PetMap latitud={-38.4161} longitud={-63.6167} zoom={4} hideMarker />
+                </TouchableOpacity>
+              ) : (
+                /* mapa con marcador — ubicación elegida */
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => setShowMap(true)}
+                  style={{ height: 200, borderRadius: 12, overflow: "hidden" }}
+                >
+                  <PetMap latitud={selectedLatitude} longitud={selectedLongitude} />
+                </TouchableOpacity>
+              )}
+            </View>
+            
+            <View style={styles.panelModal}>
+              {/*aca prosigo con la subida*/}
+              <TouchableOpacity onPress={confirmSelectionModal} 
+              disabled={!selectedLatitude && !selectedLongitude} 
+              style={[styles.modalBtn, styles.acceptBtn, (!selectedLatitude || !selectedLongitude) && { opacity: 0.4 }]}
+              
+              >
+                <Text style={styles.btnText}>Definir ubicación</Text>
+              </TouchableOpacity>
+              
+              {/*aca limpio los states*/}
+              <TouchableOpacity onPress={cancelSelectionModal} style={[styles.modalBtn, styles.cancelBtn]}>
+                <Text style={styles.btnText}>Cerrar</Text>
+              </TouchableOpacity>
+              
+            </View>
+
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Mapa para seleccionar ubicacion*/}
+      <Modal visible={showMap} animationType="slide">
+        <LocationSelectMap
+          initialLat={selectedLatitude || -34.6037}
+          initialLng={selectedLongitude || -58.3816}
+          onLocationSelected={(lat, lng) => {
+            setSelectedLatitude(lat);
+            setSelectedLongitude(lng);
+            setShowMap(false);
+          }}
+          onClose={() => setShowMap(false)}
+        />
+      </Modal>
     </View>
   );
 };
@@ -305,7 +406,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-
   editButton: {
     position: "absolute",
     right: 20,
@@ -318,4 +418,49 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 5,
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: colors.fondo.componentes,
+    padding: 20,
+    borderRadius: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 20,
+    color: colors.texto.primario,
+    textAlign: "center",
+  },
+  panelModal: {
+    position: "absolute",
+    bottom: 20,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 20,
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginHorizontal: 5,
+  },
+  acceptBtn: {
+    backgroundColor: "#4CAF50",
+  }, 
+  cancelBtn: {
+    backgroundColor: "#d9534f",
+  }, 
+  btnText: {
+    color: "#fff",
+    fontWeight: "bold",
+  }
 });
