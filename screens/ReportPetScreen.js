@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Platform, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
@@ -37,6 +37,21 @@ const ReportPetScreen = ({ onBackPress }) => {
   const [selectedLatitude, setSelectedLatitude] = useState(null);
   const [selectedLongitude, setSelectedLongitude] = useState(null);
   const [showMapModal, setShowMapModal] = useState(false);
+
+  const [userId, setUserId] = useState(null);
+  useEffect(() => {
+      fetchUser();
+  }, []);
+  const fetchUser = async () => {
+      const { data, error } = await supabase.auth.getUser();
+  
+      if (error) {
+        console.log("Error getting user:", error);
+        return;
+      }
+  
+      setUserId(data.user.id);
+  };
 
   // Función para validar si todos los campos requeridos están completos
   const isFormValid = () => {
@@ -262,7 +277,7 @@ const ReportPetScreen = ({ onBackPress }) => {
         breed: petBreed,
         description: description,
         location: lastLocation,
-        owner_id: null,
+        owner_id: userId,
         image_url: imageUrl, // Columna de Supabase debe ser 'image_url' (text, nullable)
         status: reportType === 'perdida' ? 'perdida' : 'encontrada', // Guardar el estado del aviso
         //agregados para mapa ubicacion
