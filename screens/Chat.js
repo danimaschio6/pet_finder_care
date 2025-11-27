@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -12,72 +12,201 @@ import {
   StatusBar,
   Modal,
   Pressable,
+  ActivityIndicator,
+  Alert
 } from "react-native";
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
+import { supabase } from "../supabase/client/supabaseClient"; // Cliente Supabase
 
-export default function Chat({ navigation: navProp, route }) {
-  const navigation = useNavigation();
+export default function Chat({ navigation, route }) {
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 68 + Math.max(insets.bottom, 8);
 
-  const avatarUri =
-    route?.params?.avatarUrl ||
-    "https://cdn-icons-png.flaticon.com/512/616/616408.png";
+  //parametro (dueño y mascota)
+  const { ownerId, petName, avatarUrl } = route.params || {};
 
+  const avatarUri = avatarUrl || "https://cdn-icons-png.flaticon.com/512/616/616408.png";
+  const chatTitle = petName ? `Consulta sobre ${petName}` : "Chat Pet Finder";
+
+  // estados
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const [messages, setMessages] = useState([
-    { id: "1", text: "¡Bienvenido a Pet Finder 🐾!", from: "system" },
-  ]);
+  // referencias para no perder valores entre renderizados
+  const currentUserRef = useRef(null);
+  const conversationIdRef = useRef(null);
 
-  const [input, setInput] = useState("");
+  //INICIAR CHAT (buscar usuario y la conversacion)
+  useEffect(() => {
+    const initChat = async () => {
+      try {
+        // Si no tiene ownerId ,para todo para evitar error en la BD
+        if (!ownerId) {
+          console.error("Error crítico: Intentando abrir chat sin ID de dueño (ownerId es null/undefined)");
+          Alert.alert("Error", "No se pudo identificar al dueño de esta mascota.");
+          setLoading(false);
+          return;
+        }
+        //Obtener mi usuario actual
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return; // Si no hay usuario logueado, no carga nada
+        currentUserRef.current = user.id;
 
-  // Navegar a las pantallas del TabNavigator
-  const navigateToTab = (screenName) => {
-    navigation.navigate('Dashboard', { screen: screenName });
-  };
+        //Buscar si ya existe una conversación entre YO y el DUEÑO
+        //La query busca: (user_1 = YO y user_2 = DUEÑO) O (user_1 = DUEÑO y user_2 = YO)
+        const { data: existingConv, error } = await supabase
+          .from('conversations')
+          .select('id')
+          .or(`and(user_1.eq.${user.id},user_2.eq.${ownerId}),and(user_1.eq.${ownerId},user_2.eq.${user.id})`)
+          .maybeSingle(); // el maybeSingle para que no de error si no existe
 
-  const sendMessage = () => {
-    if (input.trim().length === 0) return;
-
-    const newMessage = {
-      id: Date.now().toString(),
-      text: input,
-      from: "user",
+        if (existingConv) {
+          // Si ya hablaron antes, cargamos el ID y los mensajes
+          conversationIdRef.current = existingConv.id;
+          await loadMessages(existingConv.id);
+          subscribeToMessages(existingConv.id);
+        } else {
+          // Si es chat nuevo, dejamos de cargar (se creara al enviar el primer mensaje)
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error("Error iniciando chat:", err);
+        setLoading(false);
+      }
     };
 
-    setMessages([...messages, newMessage]);
-    setInput("");
+    initChat();
+
+    //limpieza al salir de la pantalla
+    return () => {
+      supabase.removeAllChannels();
+    };
+  }, [ownerId]);
+
+  //cargar los mensajes viejos
+  const loadMessages = async (convId) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', convId)
+      .order('created_at', { ascending: false });     // Orden DESC para la lista
+
+    if (!error && data) {
+      setMessages(data);
+    }
+    setLoading(false);
   };
 
-  const renderItem = ({ item }) => (
-    <View
-      style={[
-        styles.messageBubble,
-        item.from === "user" ? styles.userMessage : styles.systemMessage,
-      ]}
-    >
-      <Text style={item.from === "user" ? styles.userText : styles.systemText}>
-        {item.text}
-      </Text>
-    </View>
-  );
+  //SUSCRIPCIÓN REALTIME
+  const subscribeToMessages = (convId) => {
+    supabase
+      .channel(`chat:${convId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${convId}` },
+        (payload) => {
+          // Si el mensaje nuevo NO es mío, lo agrego (los míos ya los agrego localmente)
+          if (payload.new.sender_id !== currentUserRef.current) {
+            setMessages((prev) => [payload.new, ...prev]);
+          }
+        }
+      )
+      .subscribe();
+  };
+
+  //ENVIAR MENSAJE
+  const sendMessage = async () => {
+    if (input.trim().length === 0) return;
+
+    // Seguridad extra. Si no hay ownerId, alertamos.
+    if (!ownerId) {
+      Alert.alert("Error", "No se puede enviar el mensaje porque falta el destinatario.");
+      return;
+    }
+
+    const textToSend = input;
+    setInput(""); //limpiar input visualmente rapido
+
+    try {
+      let convId = conversationIdRef.current;
+
+      //si no existe conversacion, la creamos(primera vez)
+      if (!convId) {
+        const { data: newConv, error: createError } = await supabase
+          .from('conversations')
+          .insert([
+            { user_1: currentUserRef.current, user_2: ownerId }
+          ])
+          .select()
+          .single();
+
+        if (createError) throw createError;
+
+        convId = newConv.id;
+        conversationIdRef.current = convId;
+        subscribeToMessages(convId); //nos suscribimos a la nueva sala
+      }
+
+      //insertar mensaje en la base de datos
+      const { data: msgData, error: msgError } = await supabase
+        .from('messages')
+        .insert([
+          {
+            conversation_id: convId,
+            sender_id: currentUserRef.current,
+            content: textToSend,
+          }
+        ])
+        .select()
+        .single();
+
+      if (msgError) throw msgError;
+
+      // agregamos a la lista local
+      setMessages((prev) => [msgData, ...prev]);
+
+    } catch (err) {
+      console.error("Error enviando mensaje:", err);
+      Alert.alert("Error", "Hubo un problema al enviar el mensaje.");
+    }
+  };
+
+  // renderizado de cada burbuja
+  const renderItem = ({ item }) => {
+    // Verificamos si el mensaje es mío comparando IDs
+    const isMyMessage = item.sender_id === currentUserRef.current;
+
+    return (
+      <View
+        style={[
+          styles.messageBubble,
+          isMyMessage ? styles.userMessage : styles.systemMessage,
+        ]}
+      >
+        <Text style={isMyMessage ? styles.userText : styles.systemText}>
+          {item.content || item.text}
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.mainContainer}>
       <StatusBar backgroundColor={colors.primarios.indigo} barStyle="light-content" />
 
       {/* HEADER */}
-      <View style={[styles.header, { paddingTop: insets.top + 12, paddingBottom: 16 }]}>
-        <TouchableOpacity onPress={() => navProp?.goBack()} style={styles.backButton}>
+      <View style={[styles.header, { marginTop: insets.top }]}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={28} color={colors.botones.textoPrimario} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Pet Finder 🐾</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{chatTitle}</Text>
 
         <TouchableOpacity onPress={() => setModalVisible(true)}>
           <Image source={{ uri: avatarUri }} style={styles.avatar} />
@@ -86,36 +215,39 @@ export default function Chat({ navigation: navProp, route }) {
 
       {/* MODAL ZOOM */}
       <Modal visible={modalVisible} animationType="fade" transparent>
-        <Pressable style={styles.modalBackground} onPress={() => setModalVisible(false)}>
+        <Pressable
+          style={styles.modalBackground}
+          onPress={() => setModalVisible(false)}
+        >
           <Image source={{ uri: avatarUri }} style={styles.modalImage} />
         </Pressable>
       </Modal>
 
-      {/* CHAT */}
+      {/* CUERPO DEL CHAT */}
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <FlatList
-          data={[...messages].reverse()}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          inverted
-          contentContainerStyle={[
-            styles.flatListContent,
-            { paddingBottom: tabBarHeight + 80 }
-          ]}
-          showsVerticalScrollIndicator={false}
-        />
+        {loading ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={colors.primarios.indigo} />
+          </View>
+        ) : (
+          <FlatList
+            data={messages}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderItem}
+            inverted
+            contentContainerStyle={styles.flatListContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
 
-        {/* INPUT */}
+        {/* INPUT BAR */}
         <View
           style={[
             styles.inputContainer,
-            { 
-              paddingBottom: Math.max(insets.bottom, 12),
-              marginBottom: tabBarHeight 
-            },
+            { paddingBottom: insets.bottom > 0 ? insets.bottom + 10 : 20 },
           ]}
         >
           <TextInput
@@ -127,117 +259,78 @@ export default function Chat({ navigation: navProp, route }) {
             onSubmitEditing={sendMessage}
             returnKeyType="send"
             blurOnSubmit={false}
+            // Deshabilitamos el input si no hay ownerId para evitar intentos de envío
+            editable={!!ownerId}
           />
 
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <TouchableOpacity
+            style={[styles.sendButton, !ownerId && { backgroundColor: '#ccc' }]}
+            onPress={sendMessage}
+            disabled={!ownerId}
+          >
             <Ionicons name="send" size={20} color={colors.botones.textoPrimario} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-
-      {/* Bottom Navigation Bar */}
-      <View style={[styles.bottomNav, { height: tabBarHeight, paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigateToTab("Inicio")}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="home-outline" size={26} color={colors.texto.secundario} />
-          <Text style={styles.navText}>Inicio</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigateToTab("Buscar")}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="search-outline" size={26} color={colors.texto.secundario} />
-          <Text style={styles.navText}>Buscar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigateToTab("Reportar")}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add-circle-outline" size={26} color={colors.texto.secundario} />
-          <Text style={styles.navText}>Reportar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navButton}
-          onPress={() => navigateToTab("Perfil")}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="person-outline" size={26} color={colors.texto.secundario} />
-          <Text style={styles.navText}>Perfil</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
 
+//    ESTILOS
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
-    backgroundColor: colors.fondo.componentes,
+    backgroundColor: colors.fondo.app,
   },
-
   header: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.primarios.indigo,
+    paddingVertical: 15,
     paddingHorizontal: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
     elevation: 4,
     shadowColor: colors.varios.sombra,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 8,
     zIndex: 10,
   },
-
   backButton: {
     padding: 8,
     marginRight: 10,
   },
-
   headerTitle: {
     flex: 1,
     color: colors.botones.textoPrimario,
     fontWeight: "bold",
     fontSize: 20,
   },
-
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: colors.fondo.componentes,
+    borderWidth: 1,
+    borderColor: "white",
   },
-
   modalBackground: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
   },
-
   modalImage: {
     width: "85%",
     height: "45%",
     borderRadius: 20,
     resizeMode: "cover",
   },
-
   container: {
     flex: 1,
-    backgroundColor: colors.fondo.app,
   },
-
   flatListContent: {
     paddingHorizontal: 12,
     paddingVertical: 20,
   },
-
   messageBubble: {
     padding: 12,
     borderRadius: 16,
@@ -245,29 +338,24 @@ const styles = StyleSheet.create({
     maxWidth: "80%",
     elevation: 1,
   },
-
   userMessage: {
     backgroundColor: colors.primarios.indigo,
     alignSelf: "flex-end",
     borderBottomRightRadius: 2,
   },
-
   systemMessage: {
-    backgroundColor: colors.fondo.app,
+    backgroundColor: colors.fondo.componentes,
     alignSelf: "flex-start",
     borderBottomLeftRadius: 2,
   },
-
   userText: {
     fontSize: 16,
     color: colors.botones.textoPrimario,
   },
-
   systemText: {
     fontSize: 16,
     color: colors.texto.primario,
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -277,7 +365,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: colors.bordes.primario,
   },
-
   input: {
     flex: 1,
     height: 50,
@@ -290,7 +377,6 @@ const styles = StyleSheet.create({
     marginRight: 10,
     color: colors.texto.primario,
   },
-
   sendButton: {
     backgroundColor: colors.primarios.indigo,
     width: 50,
@@ -298,36 +384,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-  },
-  bottomNav: {
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-    alignItems: "center",
-    backgroundColor: colors.fondo.componentes,
-    borderTopWidth: 0.5,
-    borderTopColor: colors.bordes.primario,
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 10,
-    zIndex: 1000,
-  },
-  navButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 4,
-  },
-  navText: {
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 6,
-    color: colors.texto.secundario,
   },
 });

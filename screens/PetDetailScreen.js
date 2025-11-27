@@ -37,7 +37,8 @@ const DUMMY_PETS = [
   //   type: 'Gato',
   //   breed: 'Blanco',
   //   status: 'Perdido',
-  //   photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQIr3PrvUHNTIOoqS1zvJpXci3DcShAFrKEgXRNQt_94E6nSAtfi69c1QHK_TfN7WHjkoJCQT-eX6kF42kPSdquyIx5vOsOH4U6YWBkTkDn',
+  //   photo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT9lGju3R8oPqx9Wr22qFgZNuTpmtu4O861p-2stgpd2iGAFl9wsBboT5YC8cJkY_5wbx3d6krnU_4LsiGD51Ok4q2jBFz4HGRGOdArpZAXlw',
+    
   // },
 ];
 

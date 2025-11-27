@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AntDesign, Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import colors from '../data/colors.json';
-import ReportPetScreen from './ReportPetScreen';
+import ReportPetScreen from '../screens/ReportPetScreen';
 import DashboardScreen from './DashboardScreen';
 import ProfileScreen from './ProfileScreen';
 
@@ -31,60 +30,41 @@ function NearbyPetsStack() {
 }
 
 const TabNavigator = ({ onLogout }) => {
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = 68 + Math.max(insets.bottom, 8);
-  
   return (
     <Tab.Navigator
       initialRouteName="Inicio"
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size, focused }) => {
+        tabBarIcon: ({ color, size }) => {
           let iconName;
           let IconComponent;
           if (route.name === 'Inicio') {
-            iconName = focused ? 'home' : 'home-outline';
+            iconName = 'home-outline';
             IconComponent = Ionicons;
           } else if (route.name === 'Buscar') {
-            iconName = focused ? 'search' : 'search-outline';
-            IconComponent = Ionicons;
+            iconName = 'search1';
+            IconComponent = AntDesign;
           } else if (route.name === 'Reportar') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
+            iconName = 'receipt-outline';
             IconComponent = Ionicons;
           } else if (route.name === 'Perfil') {
-            iconName = focused ? 'person' : 'person-outline';
-            IconComponent = Ionicons;
+            iconName = 'user-alt';
+            IconComponent = FontAwesome5;
           }
-          return (
-            <IconComponent 
-              name={iconName} 
-              size={focused ? 28 : 26} 
-              color={color} 
-            />
-          );
+          return <IconComponent name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.primarios.indigo,
-        tabBarInactiveTintColor: colors.texto.secundario,
+        tabBarInactiveTintColor: colors.secundarios.gris,
         tabBarStyle: {
           backgroundColor: colors.fondo.componentes,
-          borderTopWidth: 0.5,
-          borderTopColor: colors.bordes.primario,
-          height: tabBarHeight,
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 10,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
           position: 'absolute',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 10,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          marginTop: 6,
-        },
-        tabBarItemStyle: {
-          paddingVertical: 4,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 70,
+          paddingBottom: 10,
+          marginBottom: 0,
         },
         headerShown: false,
       })}

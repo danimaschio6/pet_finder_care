@@ -1,10 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "../data/colors.json";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import PetMap from "./components/PetMap";
+
+import { supabase } from "../supabase/client/supabaseClient";
 
 interface ICoords {
     latitud: number,
@@ -13,10 +15,11 @@ interface ICoords {
 interface IPet {
     id: string
     tipo: string
-    nombre: string
+    nombre?: string
     estado: string
     descripcion: string
     detalle: string
+    idDuenio?: number
     distancia: string
     latitud?: number
     longitud?: number
@@ -34,6 +37,22 @@ export default function NearbyPetDetailScreen() {
         longitud: mascota.longitud,
     };
 
+    const handleContact = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+
+        if (!user) {
+            Alert.alert("Atención", "Debes iniciar sesión para contactar al dueño.");
+            return;
+        }
+
+        if (mascota.user_id && mascota.user_id === user.id) {
+            Alert.alert("Es tu mascota", "No puedes enviarte mensajes a ti mismo.");
+            return;
+        }
+
+        (navigation as any).navigate('Mensajes', { ownerId: mascota.idDuenio, petName: mascota.nombre, avatarUrl: mascota.image_url, });
+    };
+
     return (
         <View style={styles.screen}>
             <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
@@ -48,7 +67,7 @@ export default function NearbyPetDetailScreen() {
                 <View style={styles.backButton} />
             </View>
             <View style={styles.container}>
-                <ScrollView style={styles.container}>
+                <ScrollView style={[styles.container, {paddingBottom: 10}]}>
                     <Text style={styles.titulo}>{mascota.nombre}</Text>
                     <Text style={styles.estado}>
                         Estado:{" "}
@@ -89,6 +108,17 @@ export default function NearbyPetDetailScreen() {
                     <View style={{ height: 250, borderRadius: 10, overflow: "hidden", marginVertical: 16 }}>
                         <PetMap {...coordenadas} />
                     </View>
+
+                    <TouchableOpacity
+                        style={styles.contactButton}
+                        onPress={handleContact}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="chatbubble-ellipses-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
+                        <Text style={styles.contactButtonText}>
+                            Contactar.
+                        </Text>
+                    </TouchableOpacity>
                 </ScrollView>
                     
             </View>
@@ -189,5 +219,26 @@ const styles = StyleSheet.create({
         color: colors.texto.secundario,
         fontSize: 15,
         fontWeight: '400',
+    },
+    contactButton: {
+        flexDirection: 'row',
+        backgroundColor: colors.primarios.indigo,
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 30,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 10,
+        marginBottom: 80,
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+    },
+    contactButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
     }
 });

@@ -36,6 +36,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import Chat from './screens/Chat';
 
+
 const Stack = createNativeStackNavigator();
 
 const App = () => {
@@ -45,7 +46,7 @@ const App = () => {
   // Verificar sesión al iniciar la app
   useEffect(() => {
     checkSession();
-    
+
     // Escuchar cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {

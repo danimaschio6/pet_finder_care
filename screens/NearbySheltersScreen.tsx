@@ -24,20 +24,20 @@ export default function NearbySheltersScreen() {
     {
       id: 1,
       name: "Refugio San Martín",
-      latitude: -34.5875,
-      longitude: -58.4473,
+      latitude: -31.397056,
+      longitude: -58.025343,
     },
     {
       id: 2,
       name: "Hogar Patitas Felices",
-      latitude: -34.6037,
-      longitude: -58.3816,
+      latitude: -31.385575,
+      longitude: -58.013049,
     },
     {
       id: 3,
       name: "Rescate Animal Sur",
-      latitude: -34.6995,
-      longitude: -58.4750,
+      latitude: -31.380892,
+      longitude: -58.021556,
     },
   ];
 
@@ -45,7 +45,6 @@ export default function NearbySheltersScreen() {
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status !== 'granted') {
         alert("Permiso de ubicación denegado.");
         setIsLoading(false);
@@ -63,7 +62,9 @@ export default function NearbySheltersScreen() {
   }, []);
 
   useEffect(() => {
-    if (userLocation) loadShelters();
+    if (userLocation) {
+      loadShelters();
+    }
   }, [userLocation]);
 
   if (isLoading) {
@@ -86,12 +87,10 @@ export default function NearbySheltersScreen() {
   const loadShelters = async () => {
     try {
       setIsLoading(true);
-
       const { data: shelterData, error } = await supabase
         .from("shelters")
         .select("id, name, created_at, latitude, longitude")
         .order("created_at", { ascending: false });
-
       if (error) {
         console.error("Error al cargar refugios:", error);
         setShelters([]);
@@ -99,7 +98,6 @@ export default function NearbySheltersScreen() {
       }
 
       const processedShelters: IShelter[] = [];
-
       for (const shelter of shelterData || []) {
         const distanciaKm = calcularDistanciaKm(
           userLocation!.lat,
@@ -107,22 +105,23 @@ export default function NearbySheltersScreen() {
           shelter.latitude,
           shelter.longitude
         );
-
-        // Descarta refugios a más de 10 km
+        // Si el refugio esta a mas de 10km pasa al siguiente
         if (distanciaKm > 10) continue;
 
-        // Obtener dirección inversa
-        const address = await Location.reverseGeocodeAsync({
-          latitude: shelter.latitude,
-          longitude: shelter.longitude,
-        });
+        let ubicacion = "Ubicación no disponible";
 
-        let ubicacion = "Ubicación desconocida";
+        try {
+          const address = await Location.reverseGeocodeAsync({
+            latitude: shelter.latitude,
+            longitude: shelter.longitude,
+          });
 
-        if (address.length > 0) {
-          const { street, name } = address[0];
-          if (street && name) ubicacion = `${street} ${name}`;
-          else if (street) ubicacion = street;
+          if (address.length > 0) {
+            const a = address[0];
+            ubicacion = a.street ? `${a.street} ${a.name || ""}` : ubicacion;
+          }
+        } catch (e) {
+          console.warn("reverseGeocode falló:", e);
         }
 
         processedShelters.push({
@@ -210,20 +209,20 @@ export default function NearbySheltersScreen() {
           longitudeDelta: 0.05,
         }}
       >
-        {/* Marcador del usuario */}
+        {/* Marcador de usuario */}
         <Marker
           coordinate={{ latitude: userLocation.lat, longitude: userLocation.long }}
           title="Tú"
           pinColor="blue"
         />
 
-        {/* Marcadores de los refugios */}
+        {/* Marcadores de refugios */}
         {shelters.map((refugio) => (
           <Marker
             key={refugio.id}
             coordinate={{ latitude: refugio.latitud, longitude: refugio.longitud }}
             title={refugio.nombre}
-            description={ refugio.distancia+" - "+refugio.ubicacion }
+            description={ refugio.distancia +" - "+ refugio.ubicacion }
             pinColor="red"
           />
         ))}
