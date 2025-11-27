@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ScrollView, 
+  Alert, 
+  ActivityIndicator,
+  KeyboardAvoidingView, // <--- Importado
+  Platform // <--- Importado para detectar OS
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import colors from '../data/colors.json';
 import { supabase } from '../supabase/client/supabaseClient';
@@ -21,7 +32,8 @@ const CompleteProfileScreen = ({ route, navigation, onLoginSuccess }) => {
   const handleCompleteProfile = async () => {
     // Validación
     if (!firstName.trim() || !lastName.trim() || !phone.trim() || !city.trim()) {
-      Alert.alert("Error", "Por favor, completa todos los campos.");
+      // Reemplazo de Alert con una implementación de alerta más segura si fuera una web, pero en RN se usa Alert
+      Alert.alert("Error", "Por favor, completa todos los campos."); 
       return;
     }
 
@@ -225,71 +237,90 @@ const CompleteProfileScreen = ({ route, navigation, onLoginSuccess }) => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <MaterialCommunityIcons name="account-circle" size={60} color={colors.primarios.indigo} />
-        <Text style={styles.title}>Completa tu Perfil</Text>
-        <Text style={styles.subtitle}>Necesitamos algunos datos adicionales para continuar</Text>
-      </View>
+    // 1. Envolver todo con KeyboardAvoidingView
+    <KeyboardAvoidingView
+      style={styles.flexContainer}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} // Usar 'padding' en iOS, 'height' o 'position' en Android
+      // 2. Ajustar el offset si el encabezado se sigue ocultando (puedes ajustar este valor)
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      {/* 3. El ScrollView es ahora el hijo de KeyboardAvoidingView */}
+      <ScrollView 
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled" // Mejora la experiencia al tocar fuera de los inputs
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <MaterialCommunityIcons name="account-circle" size={60} color={colors.primarios.indigo} />
+          <Text style={styles.title}>Completa tu Perfil</Text>
+          <Text style={styles.subtitle}>Necesitamos algunos datos adicionales para continuar</Text>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.label}>Nombre</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Juan"
-          value={firstName}
-          onChangeText={setFirstName}
-          autoCapitalize="words"
-        />
+        <View style={styles.card}>
+          <Text style={styles.label}>Nombre</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Juan"
+            value={firstName}
+            onChangeText={setFirstName}
+            autoCapitalize="words"
+          />
 
-        <Text style={styles.label}>Apellido</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Pérez"
-          value={lastName}
-          onChangeText={setLastName}
-          autoCapitalize="words"
-        />
+          <Text style={styles.label}>Apellido</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Pérez"
+            value={lastName}
+            onChangeText={setLastName}
+            autoCapitalize="words"
+          />
 
-        <Text style={styles.label}>Teléfono</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: +54 11 1234-5678"
-          value={phone}
-          onChangeText={setPhone}
-          keyboardType="phone-pad"
-        />
+          <Text style={styles.label}>Teléfono</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: +54 11 1234-5678"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
 
-        <Text style={styles.label}>Ciudad</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej: Buenos Aires"
-          value={city}
-          onChangeText={setCity}
-          autoCapitalize="words"
-        />
+          <Text style={styles.label}>Ciudad</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej: Buenos Aires"
+            value={city}
+            onChangeText={setCity}
+            autoCapitalize="words"
+          />
 
-        <TouchableOpacity
-          style={[styles.button, isLoading && styles.buttonDisabled]}
-          onPress={handleCompleteProfile}
-          disabled={!!isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color={colors.botones.textoPrimario} />
-          ) : (
-            <Text style={styles.buttonText}>Guardar y Continuar</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity
+            style={[styles.button, isLoading && styles.buttonDisabled]}
+            onPress={handleCompleteProfile}
+            disabled={!!isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={colors.botones.textoPrimario} />
+            ) : (
+              <Text style={styles.buttonText}>Guardar y Continuar</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  // Nuevo estilo para el contenedor principal
+  flexContainer: { 
+    flex: 1, 
+    backgroundColor: colors.fondo.app, // Opcional: mantener el color de fondo aquí
+  }, 
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: colors.fondo.app,
+    // Eliminamos el backgroundColor de aquí si lo pusimos en flexContainer
+    // y si no está, lo dejamos como estaba
   },
   header: {
     alignItems: 'center',
@@ -366,4 +397,3 @@ const styles = StyleSheet.create({
 });
 
 export default CompleteProfileScreen;
-
