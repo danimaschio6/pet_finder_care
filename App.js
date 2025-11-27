@@ -29,13 +29,14 @@ import AgregarHistorialScreen from './screens/AgregarHistorialScreen';
 import EditarHistorialScreen from './screens/EditarHistorialScreen';
 import RecordatoriosScreen from './screens/RecordatoriosScreen';
 import ReminderModal from './screens/ReminderModal';
+import InboxScreen from './screens/InboxScreen';
+import NearbySheltersScreen from './screens/NearbySheltersScreen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 
 
 import Chat from './screens/Chat';
-
 
 const Stack = createNativeStackNavigator();
 
@@ -46,7 +47,7 @@ const App = () => {
   // Verificar sesión al iniciar la app
   useEffect(() => {
     checkSession();
-
+    
     // Escuchar cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
@@ -132,7 +133,11 @@ const App = () => {
                component={ReminderModal}
                options={{ presentation: "modal" }}
              />
+              <Stack.Screen name="misMascotas" component={MisMascotasScreen} />
+              <Stack.Screen name="BandejaEntrada" component={InboxScreen} />
               <Stack.Screen name="Mensajes" component={Chat} />
+              <Stack.Screen name="Refugios" component={NearbySheltersScreen} />
+              
             </>
           ) : (
             <>
