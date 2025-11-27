@@ -1,6 +1,0 @@
-
-export default {
-  SUPABASE_URL: "https://tlarlnconsuhrwnvwiku.supabase.co",
-  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsYXJsbmNvbnN1aHJ3bnZ3aWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgwNTI1OTYsImV4cCI6MjA3MzYyODU5Nn0.Z4KxvxSFSw9KYZeMmv-DrdSaFRondFSwGJYPTqIoZGQ",
-};
-

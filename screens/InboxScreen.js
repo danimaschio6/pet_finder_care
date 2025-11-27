@@ -23,26 +23,37 @@ export default function InboxScreen() {
             setLoading(true);
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
+            
+            // ID del usuario actual para el filtro
+            const currentUserId = user.id; 
 
             // Se busca las conversaciones donde soy el user_1 O user_2
             // Y traemos los datos de perfil de ambos para saber quién es el otro
             const { data, error } = await supabase
                 .from('conversations')
                 .select(`
-          id,
-          user_1:profiles!user_1(id, first_name, last_name, avatar_url),
-          user_2:profiles!user_2(id, first_name, last_name, avatar_url)
-        `);
+                    id,
+                    user_1:profiles!user_1(id, first_name, last_name, avatar_url),
+                    user_2:profiles!user_2(id, first_name, last_name, avatar_url)
+                `)
+                // SOLUCIÓN APLICADA: Filtramos explícitamente usando .or()
+                .or(`user_1.eq.${currentUserId},user_2.eq.${currentUserId}`);
 
             if (error) throw error;
 
             // Filtro para mostrar solo los datos del "otro" usuario
             const formattedData = data.map(chat => {
-                const amIUser1 = chat.user_1.id === user.id;
+                // 👇 BLINDAJE APLICADO: Si 'chat.user_1' es null, el ?. detiene la ejecución 
+                //    y 'amIUser1' será false, pasando el control a chat.user_2.
+                const amIUser1 = chat.user_1?.id === user.id; 
+                
                 const otherUser = amIUser1 ? chat.user_2 : chat.user_1;
 
                 // Si no hay datos del otro usuario, ponemos algo genérico
-                const nombre = otherUser ? `${otherUser.first_name || 'Usuario'} ${otherUser.last_name || ''}` : 'Usuario desconocido';
+                // Esta lógica es segura contra last_name nulo.
+                const nombre = otherUser 
+                    ? `${otherUser.first_name || 'Usuario'} ${otherUser.last_name || ''}`.trim() 
+                    : 'Usuario desconocido';
                 const avatar = otherUser?.avatar_url || 'https://cdn-icons-png.flaticon.com/512/616/616408.png';
 
                 return {
@@ -56,6 +67,8 @@ export default function InboxScreen() {
             setConversations(formattedData);
         } catch (error) {
             console.error('Error cargando inbox:', error);
+            // Ahora, si hay un error, debería estar fuera de este archivo,
+            // o ser un error de red/RLS, no un ReferenceError simple.
         } finally {
             setLoading(false);
         }

@@ -37,4 +37,3 @@ const FullScreenImageViewer = ({ imageUrl, onClose }) => {
 
 export default FullScreenImageViewer;
 
-

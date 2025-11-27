@@ -137,14 +137,14 @@ const DashboardScreen = ({ onLogout }) => {
         <Text style={styles.headerTitle}>Inicio</Text>
       </View>
 
-      {/* Tarjeta de Notificación Flotante */}
+      {/* Tarjeta de Notificación Flotante
       <View style={styles.notificationCard}>
         <AntDesign name="star" size={20} color={colors.primarios.indigo} />
         <View style={styles.notificationContent}>
           <Text style={styles.notificationTitle}>Nueva mascota encontrada cerca de tu ubicación!</Text>
           <Text style={styles.notificationSubtitle}>Hace 15 min - Av. Libertador 123</Text>
         </View>
-      </View>
+      </View> */}
 
       {/* Contenido de la Pantalla */}
       <ScrollView 
@@ -185,18 +185,15 @@ const DashboardScreen = ({ onLogout }) => {
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.quickAccessButton, { backgroundColor: '#F3E5F5' }]} 
-            onPress={() => handleComingSoon()}
+            onPress={() => navigation.navigate("Refugios")}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="map-marker-radius" size={28} color="#9C27B0" />
             <Text style={styles.quickAccessText}>Refugios Cercanos</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.quickAccessButton, { backgroundColor: '#FFF3E0' }]} 
-            onPress={() => navigation.navigate('Mensajes')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chatbubble-ellipses-outline" size={28} color="#FF9800" />
+
+          <TouchableOpacity style={[styles.quickAccessButton, { backgroundColor: '#FFFEE6' }]} onPress={() => navigation.navigate('BandejaEntrada')}>
+            <Ionicons name="chatbubble-ellipses-outline" size={24} color="#F8E71C" />
             <Text style={styles.quickAccessText}>Mensajes</Text>
           </TouchableOpacity>
         </View>

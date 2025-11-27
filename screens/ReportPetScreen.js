@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker'; // Necesita 'npx expo install expo-image-picker'
 import 'react-native-get-random-values'; 
 import { v4 as uuidv4 } from 'uuid'; // Necesita 'npm install uuid react-native-get-random-values'
-
+import * as FileSystem from "expo-file-system/legacy";
 import colors from '../data/colors.json';
 import { supabase } from '../supabase/client/supabaseClient'; 
 
@@ -97,75 +97,87 @@ const ReportPetScreen = ({ onBackPress }) => {
    * Maneja tanto web (usando File object) como móvil (usando fetch de URI).
    * Contiene logs de DEBUG para identificar dónde se queda colgada la app (generalmente en RLS).
    */
+    function base64ToBytes(base64) {
+    const binary = global.atob(base64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
   const uploadImageToSupabase = async (uri, asset = null) => {
-    setIsUploading(true);
-    let fileToUpload;
-    let fileExt;
-    let contentType;
-    
     try {
-      // En web, usar el objeto File directamente para evitar problemas de CORB
-      if (Platform.OS === 'web' && asset?.file) {
-        console.log('DEBUG: Modo WEB - Usando objeto File directamente');
+      let fileToUpload;
+      let fileName;
+      let contentType;
+      let fileExt;
+
+      console.log("DEBUG: Iniciando subida…");
+
+      // ------------------------------------
+      // 1) MODO WEB → usar File directamente
+      // ------------------------------------
+      if (Platform.OS === "web" && asset?.file) {
+        console.log("DEBUG: Web - usando File directamente");
+
         fileToUpload = asset.file;
-        fileExt = asset.fileName?.split('.').pop() || 'jpg';
+        fileExt = asset.fileName?.split(".").pop() || "jpg";
         contentType = asset.mimeType || `image/${fileExt}`;
-      } else {
-        // En móvil, convertir URI a blob usando fetch
-        console.log('DEBUG: Modo MÓVIL - Convirtiendo URI a blob');
-        
-        // Obtener extensión de la URI
-        const uriParts = uri.split('.');
-        fileExt = uriParts[uriParts.length - 1] || 'jpg';
-        
-        // Convertir URI local a blob
-        console.log('DEBUG: Intentando FETCH de URI local...');
-        const response = await fetch(uri);
-        
-        if (!response.ok) {
-            throw new Error(`Error al obtener la imagen: ${response.statusText}`);
-        }
-        
-        fileToUpload = await response.blob();
-        contentType = `image/${fileExt}`;
-        console.log('DEBUG: FETCH exitoso. Blob creado.');
+        fileName = `${uuidv4()}.${fileExt}`;
       }
 
-      // Generar nombre único para el archivo
-      const fileName = `${uuidv4()}.${fileExt}`;
-      console.log('DEBUG: Nombre de archivo generado:', fileName);
+      // ---------------------------------------------------------
+      // 2) MODO MÓVIL → leer como base64 (fetch NO sirve en Expo)
+      // ---------------------------------------------------------
+      else {
+        console.log("DEBUG: Móvil - leyendo archivo como base64…");
 
-      // Subir el archivo al bucket 'pet-images'
-      console.log('DEBUG: Intentando SUBIDA a Supabase...');
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: "base64",
+        });
+
+        console.log("DEBUG: Base64 leído. Convirtiendo a bytes…");
+
+        const fileBytes = base64ToBytes(base64);
+
+        // Obtener extensión desde la URI
+        fileExt = uri.split(".").pop() || "jpg";
+        contentType = `image/${fileExt}`;
+        fileName = `${uuidv4()}.${fileExt}`;
+        fileToUpload = fileBytes;
+      }
+
+      console.log("DEBUG: Subiendo archivo a Supabase…");
+
       const { data, error } = await supabase.storage
-      .from('pet-images') // Debe coincidir con el nombre de tu Bucket
-      .upload(fileName, fileToUpload, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: contentType
-      });
-      console.log('DEBUG: Subida terminada. Analizando resultado...');
+        .from("pet-images")
+        .upload(fileName, fileToUpload, {
+          contentType,
+          upsert: false,
+        });
 
       if (error) {
-        // Si hay un error aquí, es un fallo de Storage.
-        throw new Error(`Fallo al subir imagen a Storage: ${error.message}.`);
+        console.error("ERROR SUPABASE:", error);
+        throw new Error(error.message);
       }
 
-      // Obtener la URL pública del archivo
+      // Obtener URL pública
       const { data: publicUrlData } = supabase.storage
-      .from('pet-images')
-      .getPublicUrl(fileName);
-      
-      console.log('DEBUG: URL Pública obtenida:', publicUrlData.publicUrl);
+        .from("pet-images")
+        .getPublicUrl(fileName);
+
+      console.log("DEBUG: URL pública:", publicUrlData.publicUrl);
+
       return publicUrlData.publicUrl;
 
     } catch (error) {
-      // MUY IMPORTANTE: SI CAE AQUÍ, TE MOSTRARÁ EL ERROR EN CONSOLA
-      setIsUploading(false); // Habilitamos el botón
-      console.error('ERROR EN EL PROCESO DE SUBIDA:', error);
-      throw new Error(`Fallo en el proceso de subida: ${error.message}.`);
+      console.error("ERROR EN SUBIDA:", error);
+      throw new Error(`Error subiendo imagen: ${error.message}`);
     }
   };
+    
+    
+
+     
 
   /**
    * Sube el archivo de imagen a Supabase Storage.
@@ -459,7 +471,7 @@ const ReportPetScreen = ({ onBackPress }) => {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => setShowMapModal(true)}
-              style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+              style={{ height: 200, borderRadius: 12, overflow: "hidden" }}
             >
               <PetMap latitud={selectedLatitude} longitud={selectedLongitude} />
             </TouchableOpacity>
@@ -707,7 +719,7 @@ const styles = StyleSheet.create({
     borderColor: colors.bordes.primario,
     borderWidth: 0.5,
     borderRadius: 10,
-    paddingHorizontal: 16,
+    paddingHorizontal: 19,
     backgroundColor: colors.fondo.componentes,
     fontSize: 17,
     color: colors.texto.primario,
@@ -728,7 +740,7 @@ const styles = StyleSheet.create({
   },
   picker: {
     width: '100%',
-    height: 44,
+    height: 50,
   },
   pickerItem: {
     color: colors.texto.primario,
@@ -858,7 +870,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   publishButton: {
-    width: '100%',
+    width: '90%',
     backgroundColor: colors.primarios.indigo,
     paddingVertical: 14,
     paddingHorizontal: 20,
