@@ -456,26 +456,32 @@ const ReportPetScreen = ({ onBackPress }) => {
           </View>
         </View>
         */}
-        <View style={styles.mapSection}>
-          {/* mapa lejano — si no hay ubicación seleccionada */}
-          {selectedLatitude === null && selectedLongitude === null ? (
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => setShowMapModal(true)}
-              style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
-            >
-              <PetMap latitud={-38.4161} longitud={-63.6167} zoom={4} hideMarker />
-            </TouchableOpacity>
-          ) : (
-            /* mapa con marcador — ubicación elegida */
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => setShowMapModal(true)}
-              style={{ height: 200, borderRadius: 12, overflow: "hidden" }}
-            >
-              <PetMap latitud={selectedLatitude} longitud={selectedLongitude} />
-            </TouchableOpacity>
-          )}
+        <View style={styles.inputGroup}>
+          <View style={styles.labelContainer}>
+            <Text style={styles.label}>Ubicación en mapa</Text>
+            <Text style={styles.requiredLabel}>*</Text>
+          </View>
+          <View style={styles.mapSection}>
+            {/* mapa lejano — si no hay ubicación seleccionada */}
+            {selectedLatitude === null && selectedLongitude === null ? (
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setShowMapModal(true)}
+                style={{ height: 200, borderRadius: 10, overflow: "hidden" }}
+              >
+                <PetMap latitud={-38.4161} longitud={-63.6167} zoom={4} hideMarker />
+              </TouchableOpacity>
+            ) : (
+              /* mapa con marcador — ubicación elegida */
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => setShowMapModal(true)}
+                style={{ height: 200, borderRadius: 12, overflow: "hidden" }}
+              >
+                <PetMap latitud={selectedLatitude} longitud={selectedLongitude} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <View style={styles.inputGroup}>

@@ -37,6 +37,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 import Chat from './screens/Chat';
+import NewsScreen from './screens/NewsScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -137,6 +138,7 @@ const App = () => {
               <Stack.Screen name="BandejaEntrada" component={InboxScreen} />
               <Stack.Screen name="Mensajes" component={Chat} />
               <Stack.Screen name="Refugios" component={NearbySheltersScreen} />
+              <Stack.Screen name="Noticias" component={NewsScreen} />
               
             </>
           ) : (
